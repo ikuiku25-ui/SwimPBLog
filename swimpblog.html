@@ -6,11 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SwimPBLog">
-<title>SwimPBLog｜結果を取り込む</title>
+<title>SwimPBLog</title>
 <style>
   :root{
     --bg1:#04101f; --bg2:#07263f; --cyan:#22d3ee; --cyan2:#0ea5c8;
-    --gold:#f5c451; --gold2:#b8860b; --card:rgba(255,255,255,.06);
+    --gold:#f5c451; --card:rgba(255,255,255,.06);
     --card-border:rgba(120,220,255,.22); --text:#eaf7ff; --sub:#9db8cc;
     --danger:#ff8a8a; --ok:#5eead4;
   }
@@ -28,6 +28,7 @@
   }
   header{ padding:calc(14px + env(safe-area-inset-top)) 18px 6px; }
   header h1{ font-size:21px; margin:0; letter-spacing:.04em; }
+  header h1 span{ color:var(--cyan); }
   header p{ margin:4px 0 0; color:var(--sub); font-size:12px; }
   main{ padding:10px 14px 20px; }
   .tabpage{ display:none; }
@@ -45,7 +46,7 @@
     border:1px solid rgba(140,200,240,.35); border-radius:12px;
     padding:11px 12px; font-size:15px; outline:none;
   }
-  textarea{ min-height:130px; font-size:13px; line-height:1.5; }
+  textarea{ min-height:120px; font-size:13px; line-height:1.5; }
   select:focus,input:focus,textarea:focus{ border-color:var(--cyan); }
   .btn{
     display:block; width:100%; border:none; cursor:pointer;
@@ -59,6 +60,7 @@
     border:1px solid rgba(140,200,240,.4); box-shadow:none; font-size:14px; padding:11px;
   }
   .btn.gold{ background:linear-gradient(180deg,#ffe08a,var(--gold)); color:#3a2a00; box-shadow:0 6px 18px rgba(245,196,81,.35); }
+  .btn.danger{ background:rgba(255,138,138,.14); color:var(--danger); border:1px solid rgba(255,138,138,.45); box-shadow:none; font-size:14px; padding:11px; }
   .row{ display:flex; gap:8px; }
   .row > *{ flex:1; }
   .hint{ font-size:12px; color:var(--sub); line-height:1.6; }
@@ -67,8 +69,7 @@
   .pcard{ position:relative; }
   .pcard .name{ font-size:18px; font-weight:800; }
   .pcard .meta{ font-size:12px; color:var(--sub); margin-top:2px; }
-  .pcard .time{ font-size:32px; font-weight:800; letter-spacing:.02em; margin:6px 0 2px;
-    font-variant-numeric:tabular-nums; }
+  .pcard .time{ font-size:32px; font-weight:800; letter-spacing:.02em; margin:6px 0 2px; font-variant-numeric:tabular-nums; }
   .pcard .laps{ font-size:12.5px; color:#cfeeff; line-height:1.7; font-variant-numeric:tabular-nums; }
   .badge{
     display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700;
@@ -86,41 +87,157 @@
   .msg.show{ display:block; }
   .msg.ok{ background:rgba(94,234,212,.14); color:var(--ok); border:1px solid rgba(94,234,212,.4); }
   .msg.err{ background:rgba(255,138,138,.12); color:var(--danger); border:1px solid rgba(255,138,138,.4); }
-  .entryline{ font-size:13px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,.08); line-height:1.55; }
-  .entryline:last-child{ border-bottom:none; }
-  .entryline b{ font-size:14px; }
-  .swimmerline{ font-size:13.5px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.08); }
-  .swimmerline:last-child{ border-bottom:none; }
-  nav.tabbar{
-    position:fixed; left:10px; right:10px; bottom:calc(8px + env(safe-area-inset-bottom));
-    display:flex; gap:6px; padding:8px;
-    background:rgba(4,20,36,.82); border:1px solid var(--card-border); border-radius:22px;
-    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); z-index:50;
-  }
-  nav.tabbar button{
-    flex:1; border:none; background:transparent; color:var(--sub); cursor:pointer;
-    font-size:13px; font-weight:700; padding:9px 0; border-radius:14px;
-  }
-  nav.tabbar button.active{ color:#03222e; background:linear-gradient(180deg,#67e8f9,var(--cyan2)); }
+  .listline{ font-size:13.5px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.08); line-height:1.55; }
+  .listline:last-child{ border-bottom:none; }
+  .listline b{ font-size:14.5px; }
+  .listline .tap{ color:var(--cyan); font-size:12px; }
   .seg{ display:flex; gap:6px; }
   .seg button{
     flex:1; padding:9px 0; border-radius:10px; border:1px solid rgba(140,200,240,.4);
     background:rgba(0,0,0,.3); color:var(--sub); font-weight:700; font-size:13px; cursor:pointer;
   }
   .seg button.active{ background:rgba(34,211,238,.25); color:var(--text); border-color:var(--cyan); }
+  .lapgrid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .lapgrid .cell label{ margin-top:2px; }
+  .lapgrid input{ padding:9px 10px; font-size:14px; font-variant-numeric:tabular-nums; }
+  nav.tabbar{
+    position:fixed; left:8px; right:8px; bottom:calc(8px + env(safe-area-inset-bottom));
+    display:flex; gap:4px; padding:7px;
+    background:rgba(4,20,36,.85); border:1px solid var(--card-border); border-radius:22px;
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); z-index:50;
+  }
+  nav.tabbar button{
+    flex:1; border:none; background:transparent; color:var(--sub); cursor:pointer;
+    font-size:12.5px; font-weight:700; padding:9px 0; border-radius:14px;
+  }
+  nav.tabbar button.active{ color:#03222e; background:linear-gradient(180deg,#67e8f9,var(--cyan2)); }
   #saveStatus{ font-size:11px; color:var(--sub); text-align:right; padding:0 18px; }
+  .chartbox{ background:rgba(0,0,0,.3); border:1px solid rgba(140,200,240,.25); border-radius:14px; padding:8px; }
+  .legend{ font-size:12px; color:var(--sub); margin-top:6px; }
+  .legend .c{ color:var(--cyan); font-weight:700; }
+  .legend .g{ color:var(--gold); font-weight:700; }
+  table.diffTable{ width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }
+  table.diffTable td, table.diffTable th{ padding:6px 4px; border-bottom:1px solid rgba(255,255,255,.08); text-align:right; }
+  table.diffTable td:first-child, table.diffTable th:first-child{ text-align:left; }
 </style>
 </head>
 <body>
 <header>
-  <h1>結果を取り込む</h1>
-  <p>公式速報サイトからコピーして貼るだけ。判定と反映はこの場でできます。</p>
+  <h1>Swim<span>PB</span>Log</h1>
+  <p>自己ベストとラップの管理。データはこの端末の中に保存されます。</p>
 </header>
 <div id="saveStatus"></div>
 
 <main>
+  <!-- ===== 選手 ===== -->
+  <section class="tabpage active" id="page-swimmers">
+    <div class="msg" id="swimmerMsg"></div>
+    <div id="swimmerListView">
+      <div class="card">
+        <h2>選手一覧</h2>
+        <input type="text" id="swimmerSearch" placeholder="名前で検索">
+        <div id="swimmerList"></div>
+      </div>
+      <div class="card">
+        <h2 id="swimmerFormTitle">選手を登録</h2>
+        <input type="hidden" id="swimmerFormId">
+        <label>氏名</label>
+        <input type="text" id="swimmerName" placeholder="例：見田 彩葉">
+        <div class="row">
+          <div><label>性別</label>
+            <select id="swimmerGender"><option value="女子">女子</option><option value="男子">男子</option></select></div>
+          <div><label>学年</label>
+            <select id="swimmerGrade"></select></div>
+        </div>
+        <button class="btn" id="swimmerSaveBtn">登録する</button>
+        <button class="btn sub" id="swimmerCancelBtn" style="display:none;">編集をやめる</button>
+      </div>
+    </div>
+    <div id="swimmerDetailView" style="display:none;">
+      <button class="btn sub" id="detailBackBtn">← 選手一覧へ戻る</button>
+      <div class="card" style="margin-top:12px;">
+        <div class="name" id="detailName" style="font-size:20px; font-weight:800;"></div>
+        <div class="meta hint" id="detailMeta"></div>
+        <div class="row" style="margin-top:10px;">
+          <button class="btn sub" id="detailEditBtn">選手情報を編集</button>
+          <button class="btn danger" id="detailDeleteBtn">選手を削除</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>自己ベスト</h2>
+        <div class="seg" id="bestCourseSeg">
+          <button type="button" data-course="SC" class="active">短水路(25m)</button>
+          <button type="button" data-course="LC">長水路(50m)</button>
+        </div>
+        <div id="bestList" style="margin-top:8px;"></div>
+      </div>
+      <div class="card">
+        <h2>ベストを入力・編集</h2>
+        <label>種目</label>
+        <select id="bestEventSelect"></select>
+        <label>記録した大会名</label>
+        <input type="text" id="bestMeetName" placeholder="例：東海ジュニア">
+        <label>ラップ（通過タイム）</label>
+        <div class="lapgrid" id="bestLapInputs"></div>
+        <button class="btn" id="bestSaveBtn">ベストを保存</button>
+        <button class="btn danger" id="bestDeleteBtn">このベストを削除</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 大会 ===== -->
+  <section class="tabpage" id="page-meets">
+    <div class="msg" id="meetMsg"></div>
+    <div class="card">
+      <h2>大会を選ぶ</h2>
+      <select id="meetSelectMain"></select>
+      <p class="hint" id="meetInfoMain"></p>
+      <button class="btn danger" id="meetDeleteBtn">この大会を削除</button>
+    </div>
+    <div class="card">
+      <h2>大会を作る</h2>
+      <label>大会名</label>
+      <input type="text" id="newMeetName" placeholder="例：第9回三重とこわか(25m)水泳競技大会">
+      <label>日付（1日目）</label>
+      <input type="text" id="newMeetDate" placeholder="例：2026-11-14">
+      <label>水路</label>
+      <div class="seg" id="courseSeg">
+        <button type="button" data-course="SC" class="active">短水路(25m)</button>
+        <button type="button" data-course="LC">長水路(50m)</button>
+      </div>
+      <button class="btn" id="meetCreateBtn">大会を作成</button>
+    </div>
+    <div class="card">
+      <h2>エントリーを追加</h2>
+      <label>選手</label>
+      <select id="entrySwimmerSelect"></select>
+      <label>種目</label>
+      <select id="entryEventSelect"></select>
+      <div class="row">
+        <div><label>区分</label><input type="text" id="entryDivision" placeholder="例：15〜18歳"></div>
+        <div><label>組</label><input type="text" id="entryHeat" placeholder="例：5"></div>
+        <div><label>レーン</label><input type="text" id="entryLane" placeholder="例：1"></div>
+      </div>
+      <label>備考</label>
+      <input type="text" id="entryNote" placeholder="任意">
+      <button class="btn" id="entryAddBtn">エントリーを追加</button>
+    </div>
+    <div class="card">
+      <h2>エントリーと結果</h2>
+      <div id="entryList"></div>
+      <button class="btn gold" id="applyAllBtn">ベスト更新分をすべて反映</button>
+    </div>
+    <div class="card" id="resultEditorCard" style="display:none;">
+      <h2 id="resultEditorTitle">結果入力</h2>
+      <div class="lapgrid" id="resultLapInputs"></div>
+      <p class="hint" id="resultVerdict"></p>
+      <button class="btn" id="resultSaveBtn">結果を保存</button>
+      <button class="btn sub" id="resultCancelBtn">閉じる</button>
+    </div>
+  </section>
+
   <!-- ===== 取り込み ===== -->
-  <section class="tabpage active" id="page-import">
+  <section class="tabpage" id="page-import">
     <div class="msg" id="importMsg"></div>
     <div class="card">
       <h2>取り込み先の大会</h2>
@@ -137,66 +254,67 @@
     <div id="previewArea"></div>
   </section>
 
-  <!-- ===== 大会 ===== -->
-  <section class="tabpage" id="page-meets">
-    <div class="msg" id="meetMsg"></div>
+  <!-- ===== 分析 ===== -->
+  <section class="tabpage" id="page-analysis">
+    <div class="msg" id="analysisMsg"></div>
     <div class="card">
-      <h2>大会を作る</h2>
-      <label>大会名</label>
-      <input type="text" id="newMeetName" placeholder="例：第9回三重とこわか(25m)水泳競技大会">
-      <label>日付（1日目）</label>
-      <input type="text" id="newMeetDate" placeholder="例：2026-11-14">
+      <h2>分析する記録を選ぶ</h2>
+      <label>選手</label>
+      <select id="anaSwimmerSelect"></select>
       <label>水路</label>
-      <div class="seg" id="courseSeg">
+      <div class="seg" id="anaCourseSeg">
         <button type="button" data-course="SC" class="active">短水路(25m)</button>
         <button type="button" data-course="LC">長水路(50m)</button>
       </div>
-      <button class="btn" id="meetCreateBtn">大会を作成</button>
+      <label>種目</label>
+      <select id="anaEventSelect"></select>
+      <label>比べる結果（大会の記録）</label>
+      <select id="anaResultSelect"></select>
+      <button class="btn" id="anaRunBtn">分析する</button>
     </div>
-    <div class="card">
-      <h2>大会一覧</h2>
-      <div id="meetList"></div>
-    </div>
-    <div class="card">
-      <h2>取り込み済みの結果</h2>
-      <div id="importedList"><p class="hint">大会を選ぶと表示します。</p></div>
-    </div>
+    <div id="analysisArea"></div>
   </section>
 
   <!-- ===== 設定 ===== -->
   <section class="tabpage" id="page-settings">
     <div class="msg" id="settingsMsg"></div>
     <div class="card">
-      <h2>データの読み込み（PC版から）</h2>
-      <p class="hint">PC版の設定タブで書き出したJSONを読み込むと、選手・自己ベスト・大会がこのiPhoneに入ります。今のデータは上書きされます。</p>
+      <h2>データの状態</h2>
+      <p class="hint" id="dataSummary"></p>
+    </div>
+    <div class="card">
+      <h2>バックアップを書き出す（JSON）</h2>
+      <p class="hint">機種変更やPC版とのやり取り用です。定期的に書き出しておくと安心です。</p>
+      <button class="btn" id="jsonExportBtn">JSONファイルを書き出す</button>
+      <button class="btn sub" id="jsonCopyBtn">JSONテキストを表示・コピー</button>
+      <textarea id="jsonOut" style="display:none; margin-top:10px;" readonly></textarea>
+    </div>
+    <div class="card">
+      <h2>バックアップを読み込む</h2>
+      <p class="hint">今のデータは上書きされます。</p>
       <input type="file" id="jsonFile" accept=".json,application/json" style="margin-top:8px; color:var(--sub);">
       <label>またはJSONテキストを貼り付け</label>
       <textarea id="jsonPaste" placeholder="JSONをここに貼り付け"></textarea>
       <button class="btn sub" id="jsonPasteBtn">貼り付けたJSONを読み込む</button>
     </div>
     <div class="card">
-      <h2>データの書き出し（PC版へ）</h2>
-      <p class="hint">取り込みと反映が終わったら書き出して、PC版の設定タブで読み込んでください。</p>
-      <button class="btn" id="jsonExportBtn">JSONファイルを書き出す</button>
-      <button class="btn sub" id="jsonCopyBtn">JSONテキストを表示・コピー</button>
-      <textarea id="jsonOut" style="display:none; margin-top:10px;" readonly></textarea>
-    </div>
-    <div class="card">
-      <h2>登録選手</h2>
-      <div id="swimmerList"></div>
+      <h2>危険な操作</h2>
+      <button class="btn danger" id="dataWipeBtn">全データを削除</button>
     </div>
   </section>
 </main>
 
 <nav class="tabbar">
-  <button data-tab="import" class="active">取り込み</button>
+  <button data-tab="swimmers" class="active">選手</button>
   <button data-tab="meets">大会</button>
+  <button data-tab="import">取り込み</button>
+  <button data-tab="analysis">分析</button>
   <button data-tab="settings">設定</button>
 </nav>
 
 <script>
 'use strict';
-/* ================= 純ロジック（PC版 swim_best_lap_2.html と同一仕様） ================= */
+/* ================= 純ロジック（PC版と同一仕様） ================= */
 const STROKE_LABEL = { FR: '自由形', BR: '平泳ぎ', BA: '背泳ぎ', FLY: 'バタフライ', IM: '個人メドレー' };
 const STROKE_CODE = { '自由形': 'FR', '平泳ぎ': 'BR', '背泳ぎ': 'BA', 'バタフライ': 'FLY', '個人メドレー': 'IM' };
 const EVENT_DEFS = [
@@ -222,7 +340,32 @@ function eventKey(code, dist) { return code + dist; }
 function eventDef(key) { return EVENT_DEFS.find(e => eventKey(e.code, e.dist) === key); }
 function eventLabel(key) { const d = eventDef(key); return d ? `${d.dist}m ${STROKE_LABEL[d.code]}` : key; }
 function bestKey(swimmerId, course, evKey) { return `${swimmerId}__${course}__${evKey}`; }
-
+const GRADE_LEVELS = ['小1','小2','小3','小4','小5','小6','中1','中2','中3','高1','高2','高3','大1','大2','大3','大4','社会人'];
+function nextGrade(grade) {
+  const idx = GRADE_LEVELS.indexOf(grade);
+  if (idx === -1) return null;
+  return GRADE_LEVELS[Math.min(idx + 1, GRADE_LEVELS.length - 1)];
+}
+function fiscalYearOf(date) {
+  const y = date.getFullYear();
+  const m = date.getMonth() + 1;
+  return m >= 4 ? y : y - 1;
+}
+function advanceGrades(DATA, now) {
+  if (!DATA.meta) DATA.meta = { lastGradeUpdateFY: null };
+  const currentFY = fiscalYearOf(now);
+  if (DATA.meta.lastGradeUpdateFY == null) { DATA.meta.lastGradeUpdateFY = currentFY; return 0; }
+  const steps = currentFY - DATA.meta.lastGradeUpdateFY;
+  if (steps <= 0) return 0;
+  let changed = 0;
+  DATA.swimmers.forEach(sw => {
+    let g = sw.grade;
+    for (let i = 0; i < steps; i++) { const n = nextGrade(g); if (n == null) break; g = n; }
+    if (g !== sw.grade) { sw.grade = g; changed++; }
+  });
+  DATA.meta.lastGradeUpdateFY = currentFY;
+  return changed;
+}
 function parseTime(str) {
   if (str == null) return null;
   const s = String(str).trim();
@@ -253,7 +396,7 @@ function formatTime(centi) {
 function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); }
 function normalizeName(name) { return String(name || '').normalize('NFKC').replace(/[\s　]+/g, ''); }
 
-/* ---------- 速報 live-results.swim.or.jp 形式パーサー ---------- */
+/* ---------- 速報パーサー ---------- */
 function parseLiveResults(text) {
   const result = { meet: null, event: null, swimmers: [] };
   const mMeet = text.match(/TOP\s*>\s*(.+)/);
@@ -292,7 +435,7 @@ function parseLiveResults(text) {
   return result;
 }
 
-/* ---------- データ操作（PC版と同一セマンティクス） ---------- */
+/* ---------- データ操作 ---------- */
 function resultLapsForEntry(parsedSwimmer, evKey) {
   const def = eventDef(evKey);
   if (!def) return {};
@@ -305,19 +448,20 @@ function resultLapsForEntry(parsedSwimmer, evKey) {
   }
   return laps;
 }
-function currentBestTotalC(DATA, swimmerId, course, evKey) {
+function lapsTotalC(laps, evKey) {
   const ev = eventDef(evKey);
-  if (!ev) return null;
+  if (!ev || !laps) return null;
+  const last = ev.laps[ev.laps.length - 1];
+  return parseTime(laps[last] || '');
+}
+function currentBestTotalC(DATA, swimmerId, course, evKey) {
   const rec = DATA.bests[bestKey(swimmerId, course, evKey)];
   if (!rec || !rec.laps) return null;
-  const last = ev.laps[ev.laps.length - 1];
-  return parseTime(rec.laps[last] || '');
+  return lapsTotalC(rec.laps, evKey);
 }
 function entryResultTotalC(entry) {
-  const ev = eventDef(entry.eventKey);
-  if (!ev || !entry.result || !entry.result.laps) return null;
-  const last = ev.laps[ev.laps.length - 1];
-  return parseTime(entry.result.laps[last] || '');
+  if (!entry.result || !entry.result.laps) return null;
+  return lapsTotalC(entry.result.laps, entry.eventKey);
 }
 function applyResultToBest(DATA, entry, meet) {
   const ev = eventDef(entry.eventKey);
@@ -332,7 +476,38 @@ function applyResultToBest(DATA, entry, meet) {
   entry.result.beatBest = (oldBestC == null || totalC < oldBestC);
   return true;
 }
-/* ================= データ保存（PC版と同一キー・同一形式） ================= */
+function verdictOf(DATA, swimmerId, course, evKey, totalC) {
+  const bestC = currentBestTotalC(DATA, swimmerId, course, evKey);
+  if (totalC == null) return { kind: 'none' };
+  if (bestC == null) return { kind: 'first', totalC };
+  if (totalC < bestC) return { kind: 'update', totalC, bestC, diff: bestC - totalC };
+  if (totalC === bestC) return { kind: 'tie', totalC, bestC };
+  return { kind: 'slower', totalC, bestC, diff: totalC - bestC };
+}
+/* 分析用：区間ラップ（センチ秒）と前後半 */
+function segmentTimes(laps, evKey) {
+  const ev = eventDef(evKey);
+  if (!ev || !laps) return [];
+  const segs = [];
+  let prevDist = 0, prevC = 0;
+  ev.laps.forEach(p => {
+    const c = parseTime(laps[p] || '');
+    if (c == null) return;
+    segs.push({ from: prevDist, to: p, dist: p - prevDist, cumC: c, segC: c - prevC });
+    prevDist = p; prevC = c;
+  });
+  return segs;
+}
+function halfSplit(laps, evKey) {
+  const ev = eventDef(evKey);
+  if (!ev || !laps) return null;
+  const half = ev.dist / 2;
+  const halfC = parseTime(laps[half] || '');
+  const totalC = lapsTotalC(laps, evKey);
+  if (halfC == null || totalC == null) return null;
+  return { firstC: halfC, secondC: totalC - halfC, totalC };
+}
+/* ================= データ保存 ================= */
 const STORAGE_KEY = 'swimLapTool_v1';
 const UI_MEET_KEY = 'swimImportIphone_currentMeet';
 function defaultData() {
@@ -348,6 +523,7 @@ function loadData() {
   } catch (e) { return defaultData(); }
 }
 let DATA = loadData();
+if (advanceGrades(DATA, new Date()) > 0) { /* 学年を自動で繰り上げた */ }
 let saveTimer = null;
 function saveData() {
   clearTimeout(saveTimer);
@@ -357,6 +533,7 @@ function saveData() {
     if (el) el.textContent = '保存済み ' + new Date().toLocaleTimeString('ja-JP');
   }, 200);
 }
+saveData();
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function showMsg(id, text, ok) {
   const el = document.getElementById(id);
@@ -367,6 +544,12 @@ function currentMeet() { return DATA.meets.find(m => m.id === localStorage.getIt
 function setCurrentMeet(id) { localStorage.setItem(UI_MEET_KEY, id || ''); renderAll(); }
 function swimmerById(id) { return DATA.swimmers.find(s => s.id === id); }
 function courseLabel(c) { return c === 'LC' ? '長水路(50m)' : '短水路(25m)'; }
+function eventOptionsHtml(selected) {
+  return EVENT_DEFS.map(ev => {
+    const k = eventKey(ev.code, ev.dist);
+    return `<option value="${k}" ${k === selected ? 'selected' : ''}>${ev.dist}m ${STROKE_LABEL[ev.code]}</option>`;
+  }).join('');
+}
 
 /* ================= タブ ================= */
 document.querySelectorAll('nav.tabbar button').forEach(btn => {
@@ -378,7 +561,159 @@ document.querySelectorAll('nav.tabbar button').forEach(btn => {
   });
 });
 
-/* ================= 大会 ================= */
+/* ================= 選手 ================= */
+const gradeSel = document.getElementById('swimmerGrade');
+gradeSel.innerHTML = GRADE_LEVELS.map(g => `<option value="${g}">${g}</option>`).join('');
+function renderSwimmerList() {
+  const q = normalizeName(document.getElementById('swimmerSearch').value);
+  const box = document.getElementById('swimmerList');
+  const list = DATA.swimmers.filter(s => !q || normalizeName(s.name).includes(q));
+  box.innerHTML = list.length
+    ? list.map(s => {
+        const bestCount = Object.keys(DATA.bests).filter(k => k.startsWith(s.id + '__')).length;
+        return `<div class="listline" onclick="openSwimmerDetail('${s.id}')"><b>${esc(s.name)}</b>
+          <span style="color:var(--sub)"> ／ ${esc(s.gender || '')} ／ ${esc(s.grade || '')} ／ ベスト${bestCount}種目</span>
+          <span class="tap"> 詳細 ›</span></div>`;
+      }).join('')
+    : '<p class="hint">選手がいません。下のフォームから登録してください。</p>';
+}
+document.getElementById('swimmerSearch').addEventListener('input', renderSwimmerList);
+document.getElementById('swimmerSaveBtn').addEventListener('click', () => {
+  const name = document.getElementById('swimmerName').value.trim();
+  const gender = document.getElementById('swimmerGender').value;
+  const grade = document.getElementById('swimmerGrade').value;
+  const id = document.getElementById('swimmerFormId').value;
+  if (!name) { showMsg('swimmerMsg', '氏名を入力してください', false); return; }
+  if (id) {
+    const sw = swimmerById(id);
+    if (sw) Object.assign(sw, { name, gender, grade });
+    showMsg('swimmerMsg', '選手情報を更新しました', true);
+  } else {
+    DATA.swimmers.push({ id: uid(), name, gender, grade });
+    showMsg('swimmerMsg', '選手を登録しました', true);
+  }
+  saveData();
+  resetSwimmerForm();
+  renderAll();
+});
+function resetSwimmerForm() {
+  document.getElementById('swimmerFormId').value = '';
+  document.getElementById('swimmerName').value = '';
+  document.getElementById('swimmerFormTitle').textContent = '選手を登録';
+  document.getElementById('swimmerSaveBtn').textContent = '登録する';
+  document.getElementById('swimmerCancelBtn').style.display = 'none';
+  document.getElementById('swimmerDetailView').style.display = 'none';
+  document.getElementById('swimmerListView').style.display = 'block';
+}
+document.getElementById('swimmerCancelBtn').addEventListener('click', resetSwimmerForm);
+
+/* ----- 選手詳細・ベスト管理 ----- */
+let detailSwimmerId = null;
+let detailCourse = 'SC';
+function openSwimmerDetail(id) {
+  detailSwimmerId = id;
+  const sw = swimmerById(id);
+  if (!sw) return;
+  document.getElementById('swimmerListView').style.display = 'none';
+  document.getElementById('swimmerDetailView').style.display = 'block';
+  document.getElementById('detailName').textContent = sw.name;
+  document.getElementById('detailMeta').textContent = `${sw.gender || ''} ／ ${sw.grade || ''}`;
+  document.getElementById('bestEventSelect').innerHTML = eventOptionsHtml('BR200');
+  renderBestList();
+  loadBestEditor();
+  window.scrollTo(0, 0);
+}
+document.getElementById('detailBackBtn').addEventListener('click', resetSwimmerForm);
+document.getElementById('detailEditBtn').addEventListener('click', () => {
+  const sw = swimmerById(detailSwimmerId);
+  if (!sw) return;
+  document.getElementById('swimmerDetailView').style.display = 'none';
+  document.getElementById('swimmerListView').style.display = 'block';
+  document.getElementById('swimmerFormId').value = sw.id;
+  document.getElementById('swimmerName').value = sw.name;
+  document.getElementById('swimmerGender').value = sw.gender || '女子';
+  if (!GRADE_LEVELS.includes(sw.grade)) {
+    gradeSel.innerHTML += `<option value="${esc(sw.grade)}">${esc(sw.grade)}</option>`;
+  }
+  document.getElementById('swimmerGrade').value = sw.grade || '高1';
+  document.getElementById('swimmerFormTitle').textContent = '選手情報を編集';
+  document.getElementById('swimmerSaveBtn').textContent = '更新する';
+  document.getElementById('swimmerCancelBtn').style.display = 'block';
+  window.scrollTo(0, 0);
+});
+document.getElementById('detailDeleteBtn').addEventListener('click', () => {
+  const sw = swimmerById(detailSwimmerId);
+  if (!sw) return;
+  if (!confirm(`${sw.name} を削除しますか？ベストとエントリーも一緒に削除されます。`)) return;
+  DATA.swimmers = DATA.swimmers.filter(s => s.id !== sw.id);
+  Object.keys(DATA.bests).forEach(k => { if (k.startsWith(sw.id + '__')) delete DATA.bests[k]; });
+  DATA.meets.forEach(m => { m.entries = m.entries.filter(e => e.swimmerId !== sw.id); });
+  saveData();
+  detailSwimmerId = null;
+  resetSwimmerForm();
+  renderAll();
+  showMsg('swimmerMsg', '選手を削除しました', true);
+});
+document.querySelectorAll('#bestCourseSeg button').forEach(b => {
+  b.addEventListener('click', () => {
+    detailCourse = b.dataset.course;
+    document.querySelectorAll('#bestCourseSeg button').forEach(x => x.classList.toggle('active', x === b));
+    renderBestList();
+    loadBestEditor();
+  });
+});
+function renderBestList() {
+  const box = document.getElementById('bestList');
+  const items = EVENT_DEFS.map(ev => {
+    const k = eventKey(ev.code, ev.dist);
+    const rec = DATA.bests[bestKey(detailSwimmerId, detailCourse, k)];
+    if (!rec || !rec.laps) return null;
+    const total = lapsTotalC(rec.laps, k);
+    const lapsText = ev.laps.filter(p => rec.laps[p]).map(p => `${p}m ${rec.laps[p]}`).join(' → ');
+    return `<div class="listline"><b>${ev.dist}m ${STROKE_LABEL[ev.code]}</b> <b>${total != null ? esc(formatTime(total)) : ''}</b>
+      <span style="color:var(--sub)">${esc(rec.meetName || '')}</span><br><span style="color:var(--sub); font-size:12px;">${esc(lapsText)}</span></div>`;
+  }).filter(Boolean);
+  box.innerHTML = items.length ? items.join('') : `<p class="hint">${courseLabel(detailCourse)}のベストはまだありません。</p>`;
+}
+function loadBestEditor() {
+  const evKey = document.getElementById('bestEventSelect').value;
+  const def = eventDef(evKey);
+  const rec = DATA.bests[bestKey(detailSwimmerId, detailCourse, evKey)];
+  document.getElementById('bestMeetName').value = rec ? (rec.meetName || '') : '';
+  document.getElementById('bestLapInputs').innerHTML = def.laps.map(p =>
+    `<div class="cell"><label>${p}m</label><input type="text" inputmode="decimal" data-point="${p}" placeholder="0:00.00" value="${rec && rec.laps && rec.laps[p] ? esc(rec.laps[p]) : ''}"></div>`).join('');
+}
+document.getElementById('bestEventSelect').addEventListener('change', loadBestEditor);
+document.getElementById('bestSaveBtn').addEventListener('click', () => {
+  const evKey = document.getElementById('bestEventSelect').value;
+  const laps = {};
+  let invalid = false;
+  document.querySelectorAll('#bestLapInputs input').forEach(inp => {
+    const v = inp.value.trim();
+    if (v) {
+      if (parseTime(v) == null) invalid = true;
+      laps[inp.dataset.point] = v;
+    }
+  });
+  if (invalid) { showMsg('swimmerMsg', 'タイムの形式が違う欄があります（例：1:13.09）', false); return; }
+  if (!Object.keys(laps).length) { showMsg('swimmerMsg', 'タイムが入力されていません', false); return; }
+  DATA.bests[bestKey(detailSwimmerId, detailCourse, evKey)] = { laps, meetName: document.getElementById('bestMeetName').value.trim() };
+  saveData();
+  renderBestList();
+  showMsg('swimmerMsg', 'ベストを保存しました', true);
+});
+document.getElementById('bestDeleteBtn').addEventListener('click', () => {
+  const evKey = document.getElementById('bestEventSelect').value;
+  const key = bestKey(detailSwimmerId, detailCourse, evKey);
+  if (!DATA.bests[key]) { showMsg('swimmerMsg', 'このベストは登録されていません', false); return; }
+  if (!confirm('このベストを削除しますか？')) return;
+  delete DATA.bests[key];
+  saveData();
+  renderBestList();
+  loadBestEditor();
+  showMsg('swimmerMsg', 'ベストを削除しました', true);
+});
+/* ================= 大会・エントリー ================= */
 let newMeetCourse = 'SC';
 document.querySelectorAll('#courseSeg button').forEach(b => {
   b.addEventListener('click', () => {
@@ -398,84 +733,171 @@ document.getElementById('meetCreateBtn').addEventListener('click', () => {
   setCurrentMeet(meet.id);
   showMsg('meetMsg', '大会を作成しました', true);
 });
-function renderMeetSelect() {
-  const sel = document.getElementById('meetSelect');
+document.getElementById('meetDeleteBtn').addEventListener('click', () => {
+  const meet = currentMeet();
+  if (!meet) return;
+  if (!confirm(`大会「${meet.name}」を削除しますか？エントリーと結果も削除されます。`)) return;
+  DATA.meets = DATA.meets.filter(m => m.id !== meet.id);
+  saveData();
+  setCurrentMeet(DATA.meets.length ? DATA.meets[DATA.meets.length - 1].id : '');
+  showMsg('meetMsg', '大会を削除しました', true);
+});
+function renderMeetSelects() {
   const cur = currentMeet();
-  sel.innerHTML = DATA.meets.length
+  const opts = DATA.meets.length
     ? DATA.meets.map(m => `<option value="${m.id}" ${cur && m.id === cur.id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')
     : '<option value="">（大会がありません）</option>';
-  const info = document.getElementById('meetInfo');
-  if (cur) info.textContent = `${courseLabel(cur.course)}／${(cur.dates || []).join('・') || '日付未設定'}／エントリー ${cur.entries.length}件`;
-  else info.textContent = '';
-  document.getElementById('meetList').innerHTML = DATA.meets.length
-    ? DATA.meets.map(m => `<div class="entryline"><b>${esc(m.name)}</b><br>${courseLabel(m.course)}／${(m.dates || []).join('・') || '日付未設定'}／結果 ${m.entries.filter(e => e.result).length}件
-        <button class="btn sub" style="margin-top:6px;" onclick="setCurrentMeet('${m.id}')">この大会を選ぶ</button></div>`).join('')
-    : '<p class="hint">まだ大会がありません。</p>';
-  renderImportedList();
+  document.getElementById('meetSelect').innerHTML = opts;
+  document.getElementById('meetSelectMain').innerHTML = opts;
+  const info = cur ? `${courseLabel(cur.course)}／${(cur.dates || []).join('・') || '日付未設定'}／エントリー ${cur.entries.length}件` : '';
+  document.getElementById('meetInfo').textContent = info;
+  document.getElementById('meetInfoMain').textContent = info;
+  document.getElementById('entrySwimmerSelect').innerHTML = DATA.swimmers.length
+    ? DATA.swimmers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')
+    : '<option value="">（選手が未登録）</option>';
+  document.getElementById('entryEventSelect').innerHTML = eventOptionsHtml('BR200');
+  renderEntryList();
 }
 document.getElementById('meetSelect').addEventListener('change', e => setCurrentMeet(e.target.value));
-function renderImportedList() {
-  const box = document.getElementById('importedList');
+document.getElementById('meetSelectMain').addEventListener('change', e => setCurrentMeet(e.target.value));
+document.getElementById('entryAddBtn').addEventListener('click', () => {
+  const meet = currentMeet();
+  if (!meet) { showMsg('meetMsg', '先に大会を作成・選択してください', false); return; }
+  const swimmerId = document.getElementById('entrySwimmerSelect').value;
+  const evKey = document.getElementById('entryEventSelect').value;
+  if (!swimmerId) { showMsg('meetMsg', '選手が未登録です。選手タブで登録してください', false); return; }
+  if (meet.entries.some(e => e.swimmerId === swimmerId && e.eventKey === evKey)) {
+    showMsg('meetMsg', '同じ選手・種目のエントリーが既にあります', false); return;
+  }
+  meet.entries.push({ id: uid(), swimmerId, eventKey: evKey,
+    division: document.getElementById('entryDivision').value.trim(),
+    heat: document.getElementById('entryHeat').value.trim(),
+    lane: document.getElementById('entryLane').value.trim(),
+    note: document.getElementById('entryNote').value.trim() });
+  saveData();
+  document.getElementById('entryHeat').value = '';
+  document.getElementById('entryLane').value = '';
+  document.getElementById('entryNote').value = '';
+  renderAll();
+  showMsg('meetMsg', 'エントリーを追加しました', true);
+});
+function renderEntryList() {
+  const box = document.getElementById('entryList');
   const meet = currentMeet();
   if (!meet) { box.innerHTML = '<p class="hint">大会を選ぶと表示します。</p>'; return; }
-  const withResult = meet.entries.filter(e => e.result);
-  if (!withResult.length) { box.innerHTML = '<p class="hint">この大会にはまだ結果が入っていません。</p>'; return; }
-  box.innerHTML = withResult.map(e => {
+  if (!meet.entries.length) { box.innerHTML = '<p class="hint">エントリーはまだありません。</p>'; return; }
+  box.innerHTML = meet.entries.map(e => {
     const sw = swimmerById(e.swimmerId);
     const total = entryResultTotalC(e);
-    const badge = e.result.appliedToBest ? 'ベスト反映済み'
-      : (e.result.beatBest ? '🎉 自己Best更新（未反映）' : '');
-    return `<div class="entryline"><b>${esc(sw ? sw.name : '不明')}</b> ${esc(eventLabel(e.eventKey))} <b>${total != null ? esc(formatTime(total)) : ''}</b>${badge ? '<br>' + badge : ''}</div>`;
+    let status = '結果未入力';
+    if (e.result) {
+      if (e.result.appliedToBest) status = 'ベスト反映済み';
+      else if (e.result.beatBest) status = '🎉 自己Best更新（未反映）';
+      else status = '入力済み';
+    }
+    return `<div class="listline"><b>${esc(sw ? sw.name : '不明')}</b> ${esc(eventLabel(e.eventKey))}
+      <span style="color:var(--sub)">${esc(e.division || '')} ${e.heat ? esc(e.heat) + '組' : ''} ${e.lane ? esc(e.lane) + 'レーン' : ''}</span><br>
+      ${total != null ? `<b>${esc(formatTime(total))}</b> ` : ''}<span style="color:var(--sub)">${status}</span>
+      <div class="row" style="margin-top:6px;">
+        <button class="btn sub" onclick="openResultEditor('${e.id}')">結果入力</button>
+        ${e.result && !e.result.appliedToBest && e.result.beatBest ? `<button class="btn sub" onclick="reflectEntryMain('${e.id}')">ベストに反映</button>` : ''}
+        <button class="btn sub" onclick="deleteEntry('${e.id}')">削除</button>
+      </div></div>`;
   }).join('');
 }
-
-/* ================= 設定：JSON往復・選手 ================= */
-function importJSON(text) {
-  try {
-    const parsed = JSON.parse(text);
-    if (!parsed || !Array.isArray(parsed.swimmers) || !Array.isArray(parsed.meets)) throw new Error('形式が違います');
-    DATA = Object.assign(defaultData(), parsed);
+function deleteEntry(entryId) {
+  const meet = currentMeet();
+  if (!meet) return;
+  if (!confirm('このエントリーを削除しますか？')) return;
+  meet.entries = meet.entries.filter(e => e.id !== entryId);
+  saveData();
+  renderAll();
+}
+function reflectEntryMain(entryId) {
+  const meet = currentMeet();
+  if (!meet) return;
+  const entry = meet.entries.find(e => e.id === entryId);
+  if (entry && applyResultToBest(DATA, entry, meet)) {
     saveData();
     renderAll();
-    showMsg('settingsMsg', `読み込みました（選手${DATA.swimmers.length}名／大会${DATA.meets.length}件）`, true);
-  } catch (e) {
-    showMsg('settingsMsg', 'JSONを読み取れませんでした。PC版で書き出したファイルか確認してください。', false);
+    showMsg('meetMsg', '自己ベストに反映しました', true);
   }
 }
-document.getElementById('jsonFile').addEventListener('change', e => {
-  const f = e.target.files[0];
-  if (!f) return;
-  const r = new FileReader();
-  r.onload = () => importJSON(String(r.result));
-  r.readAsText(f);
+document.getElementById('applyAllBtn').addEventListener('click', () => {
+  const meet = currentMeet();
+  if (!meet) { showMsg('meetMsg', '先に大会を選択してください', false); return; }
+  let n = 0;
+  meet.entries.forEach(e => {
+    if (e.result && !e.result.appliedToBest && e.result.beatBest && applyResultToBest(DATA, e, meet)) n++;
+  });
+  saveData();
+  renderAll();
+  showMsg('meetMsg', n > 0 ? `${n}件を自己ベストに反映しました` : '反映できる更新はありませんでした', n > 0);
 });
-document.getElementById('jsonPasteBtn').addEventListener('click', () => {
-  const t = document.getElementById('jsonPaste').value.trim();
-  if (t) importJSON(t);
-});
-document.getElementById('jsonExportBtn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'swim_data_export.json';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
-  showMsg('settingsMsg', '書き出しました。PC版の設定タブで読み込んでください。', true);
-});
-document.getElementById('jsonCopyBtn').addEventListener('click', () => {
-  const out = document.getElementById('jsonOut');
-  out.style.display = 'block';
-  out.value = JSON.stringify(DATA);
-  out.select();
-  if (navigator.clipboard) navigator.clipboard.writeText(out.value).catch(() => {});
-  showMsg('settingsMsg', 'JSONを表示しました（コピー済みの場合があります）', true);
-});
-function renderSwimmers() {
-  document.getElementById('swimmerList').innerHTML = DATA.swimmers.length
-    ? DATA.swimmers.map(s => `<div class="swimmerline">${esc(s.name)}<span style="color:var(--sub)"> ／ ${esc(s.gender || '')} ／ ${esc(s.grade || '')}</span></div>`).join('')
-    : '<p class="hint">選手が未登録です。PC版からJSONを読み込んでください。</p>';
+/* ----- 結果の手入力 ----- */
+let editingEntryId = null;
+function openResultEditor(entryId) {
+  const meet = currentMeet();
+  if (!meet) return;
+  const entry = meet.entries.find(e => e.id === entryId);
+  if (!entry) return;
+  editingEntryId = entryId;
+  const sw = swimmerById(entry.swimmerId);
+  const def = eventDef(entry.eventKey);
+  document.getElementById('resultEditorTitle').textContent = `結果入力：${sw ? sw.name : ''} ${eventLabel(entry.eventKey)}`;
+  document.getElementById('resultLapInputs').innerHTML = def.laps.map(p =>
+    `<div class="cell"><label>${p}m</label><input type="text" inputmode="decimal" data-point="${p}" placeholder="0:00.00" value="${entry.result && entry.result.laps && entry.result.laps[p] ? esc(entry.result.laps[p]) : ''}"></div>`).join('');
+  updateResultVerdict();
+  document.getElementById('resultEditorCard').style.display = 'block';
+  document.getElementById('resultEditorCard').scrollIntoView({ behavior: 'smooth' });
 }
-
+function readResultLaps() {
+  const laps = {};
+  let invalid = false;
+  document.querySelectorAll('#resultLapInputs input').forEach(inp => {
+    const v = inp.value.trim();
+    if (v) {
+      if (parseTime(v) == null) invalid = true;
+      laps[inp.dataset.point] = v;
+    }
+  });
+  return { laps, invalid };
+}
+function updateResultVerdict() {
+  const meet = currentMeet();
+  const entry = meet && meet.entries.find(e => e.id === editingEntryId);
+  if (!entry) return;
+  const { laps } = readResultLaps();
+  const totalC = lapsTotalC(laps, entry.eventKey);
+  const v = verdictOf(DATA, entry.swimmerId, meet.course, entry.eventKey, totalC);
+  const el = document.getElementById('resultVerdict');
+  if (v.kind === 'none') el.textContent = '最終地点（トータル）を入力すると、自己ベストと比較します。';
+  else if (v.kind === 'first') el.textContent = '自己ベスト未登録のため、この記録が初記録になります。';
+  else if (v.kind === 'update') el.textContent = `🎉 自己Best更新！（${formatTime(v.diff)}秒更新）`;
+  else if (v.kind === 'tie') el.textContent = '自己ベストと同タイムです。';
+  else el.textContent = `自己ベストまで あと${formatTime(v.diff)}秒`;
+}
+document.getElementById('resultLapInputs').addEventListener('input', updateResultVerdict);
+document.getElementById('resultSaveBtn').addEventListener('click', () => {
+  const meet = currentMeet();
+  const entry = meet && meet.entries.find(e => e.id === editingEntryId);
+  if (!entry) return;
+  const { laps, invalid } = readResultLaps();
+  if (invalid) { showMsg('meetMsg', 'タイムの形式が違う欄があります（例：1:13.09）', false); return; }
+  if (!Object.keys(laps).length) { showMsg('meetMsg', 'タイムが入力されていません', false); return; }
+  const totalC = lapsTotalC(laps, entry.eventKey);
+  const v = verdictOf(DATA, entry.swimmerId, meet.course, entry.eventKey, totalC);
+  entry.result = { laps, appliedToBest: false, beatBest: (v.kind === 'update' || v.kind === 'first') };
+  saveData();
+  document.getElementById('resultEditorCard').style.display = 'none';
+  editingEntryId = null;
+  renderAll();
+  showMsg('meetMsg', '結果を保存しました', true);
+});
+document.getElementById('resultCancelBtn').addEventListener('click', () => {
+  document.getElementById('resultEditorCard').style.display = 'none';
+  editingEntryId = null;
+});
 /* ================= 取り込み ================= */
 let lastParsed = null;
 let importedOnce = false;
@@ -500,16 +922,6 @@ function createMeetFromParsed() {
   setCurrentMeet(meet.id);
   renderPreview();
 }
-function verdictFor(parsedSwimmer, meet) {
-  const evKey = lastParsed.event && lastParsed.event.key;
-  if (!evKey || !eventDef(evKey)) return { kind: 'unsupported' };
-  const totalC = parseTime(parsedSwimmer.time);
-  const bestC = currentBestTotalC(DATA, parsedSwimmer.swimmerId, meet.course, evKey);
-  if (bestC == null) return { kind: 'first', totalC };
-  if (totalC < bestC) return { kind: 'update', totalC, diff: bestC - totalC };
-  if (totalC === bestC) return { kind: 'tie', totalC };
-  return { kind: 'slower', totalC, diff: totalC - bestC };
-}
 function renderPreview() {
   const area = document.getElementById('previewArea');
   const p = lastParsed;
@@ -533,7 +945,6 @@ function renderPreview() {
     html += `<p class="hint">取り込み先：${esc(meet.name)}（${courseLabel(meet.course)}）</p>`;
   }
   html += '</div>';
-
   p.swimmers.forEach((s, i) => {
     const sw = DATA.swimmers.find(x => normalizeName(x.name) === s.nameNorm);
     s.swimmerId = sw ? sw.id : null;
@@ -543,7 +954,7 @@ function renderPreview() {
     html += `<div class="card pcard ${sw ? '' : 'unmatched'}">`;
     if (!sw) html += '<span class="badge grey">未登録</span>';
     else if (meet && p.event && eventDef(p.event.key || '')) {
-      const v = verdictFor(s, meet);
+      const v = verdictOf(DATA, sw.id, meet.course, p.event.key, parseTime(s.time));
       if (v.kind === 'update') html += '<span class="badge">自己Best更新</span>';
       else if (v.kind === 'first') html += '<span class="badge teal">初記録</span>';
     }
@@ -551,8 +962,8 @@ function renderPreview() {
     html += `<div class="meta">${esc(s.team)}（${esc(s.grade)}）／ ${s.heat}組 ${s.lane}レーン ／ ${esc(s.klass)}${s.rt ? ' ／ RT ' + esc(s.rt) : ''}</div>`;
     html += `<div class="time">${esc(s.time)}</div>`;
     if (meet && sw && p.event && eventDef(p.event.key || '')) {
-      const v = verdictFor(s, meet);
-      if (v.kind === 'update') html += `<div class="diff plus">自己ベスト ${esc(formatTime(currentBestTotalC(DATA, sw.id, meet.course, p.event.key)))} → ${esc(formatTime(v.diff))}秒更新</div>`;
+      const v = verdictOf(DATA, sw.id, meet.course, p.event.key, parseTime(s.time));
+      if (v.kind === 'update') html += `<div class="diff plus">自己ベスト ${esc(formatTime(v.bestC))} → ${esc(formatTime(v.diff))}秒更新</div>`;
       else if (v.kind === 'slower') html += `<div class="diff minus">自己ベストまで あと${esc(formatTime(v.diff))}秒</div>`;
       else if (v.kind === 'tie') html += '<div class="diff">自己ベストと同タイム</div>';
       else if (v.kind === 'first') html += '<div class="diff plus">自己ベスト未登録（初記録）</div>';
@@ -572,7 +983,6 @@ function renderPreview() {
     }
     html += '</div>';
   });
-
   if (meet && !importedOnce && p.event && eventDef(p.event.key || '')) {
     html += '<button class="btn" onclick="doImport()">チェックした結果を取り込む</button>';
   }
@@ -635,7 +1045,193 @@ function reflectAll() {
   renderPreview();
   showMsg('importMsg', n > 0 ? `${n}件を自己ベストに反映しました` : '反映できる更新はありませんでした', n > 0);
 }
-function renderAll() { renderMeetSelect(); renderSwimmers(); }
+
+/* ================= 分析 ================= */
+let anaCourse = 'SC';
+document.querySelectorAll('#anaCourseSeg button').forEach(b => {
+  b.addEventListener('click', () => {
+    anaCourse = b.dataset.course;
+    document.querySelectorAll('#anaCourseSeg button').forEach(x => x.classList.toggle('active', x === b));
+    renderAnalysisResults();
+  });
+});
+function renderAnalysisSelects() {
+  const swSel = document.getElementById('anaSwimmerSelect');
+  const prevSw = swSel.value;
+  swSel.innerHTML = DATA.swimmers.length
+    ? DATA.swimmers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')
+    : '<option value="">（選手が未登録）</option>';
+  if (prevSw && DATA.swimmers.some(s => s.id === prevSw)) swSel.value = prevSw;
+  const evSel = document.getElementById('anaEventSelect');
+  const prevEv = evSel.value;
+  evSel.innerHTML = eventOptionsHtml(prevEv || 'BR200');
+  renderAnalysisResults();
+}
+function renderAnalysisResults() {
+  const swimmerId = document.getElementById('anaSwimmerSelect').value;
+  const evKey = document.getElementById('anaEventSelect').value;
+  const sel = document.getElementById('anaResultSelect');
+  const prev = sel.value;
+  const opts = [];
+  DATA.meets.filter(m => m.course === anaCourse).forEach(m => {
+    m.entries.filter(e => e.swimmerId === swimmerId && e.eventKey === evKey && e.result).forEach(e => {
+      const total = entryResultTotalC(e);
+      opts.push(`<option value="${m.id}|${e.id}">${esc(m.name)}：${total != null ? esc(formatTime(total)) : ''}</option>`);
+    });
+  });
+  const bestRec = DATA.bests[bestKey(swimmerId, anaCourse, evKey)];
+  if (bestRec) {
+    const total = lapsTotalC(bestRec.laps, evKey);
+    opts.push(`<option value="BEST">自己ベスト（${esc(bestRec.meetName || '')}）：${total != null ? esc(formatTime(total)) : ''}</option>`);
+  }
+  sel.innerHTML = opts.length ? opts.join('') : '<option value="">（対象の記録がありません）</option>';
+  if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+}
+document.getElementById('anaSwimmerSelect').addEventListener('change', renderAnalysisResults);
+document.getElementById('anaEventSelect').addEventListener('change', renderAnalysisResults);
+function buildChartSvg(targetSegs, bestSegs, evKey) {
+  const def = eventDef(evKey);
+  const W = 320, H = 190, PL = 8, PR = 8, PT = 12, PB = 22;
+  const maxX = def.dist;
+  const all = targetSegs.concat(bestSegs || []);
+  const maxY = Math.max.apply(null, all.map(s => s.cumC).concat([1]));
+  const X = d => PL + (W - PL - PR) * (d / maxX);
+  const Y = c => PT + (H - PT - PB) * (1 - c / maxY);
+  const line = segs => segs.map((s, i) => `${i === 0 ? 'M' : 'L'}${X(s.to).toFixed(1)},${Y(s.cumC).toFixed(1)}`).join(' ');
+  const dots = (segs, color) => segs.map(s => `<circle cx="${X(s.to).toFixed(1)}" cy="${Y(s.cumC).toFixed(1)}" r="2.6" fill="${color}"/>`).join('');
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img">`;
+  svg += `<line x1="${PL}" y1="${H - PB}" x2="${W - PR}" y2="${H - PB}" stroke="rgba(255,255,255,.25)"/>`;
+  [0, def.dist / 2, def.dist].forEach(d => {
+    svg += `<text x="${X(d).toFixed(1)}" y="${H - 6}" fill="#9db8cc" font-size="9" text-anchor="middle">${d}m</text>`;
+  });
+  if (bestSegs && bestSegs.length) svg += `<path d="${line(bestSegs)}" fill="none" stroke="#f5c451" stroke-width="2"/>${dots(bestSegs, '#f5c451')}`;
+  svg += `<path d="${line(targetSegs)}" fill="none" stroke="#22d3ee" stroke-width="2.4"/>${dots(targetSegs, '#22d3ee')}`;
+  svg += '</svg>';
+  return svg;
+}
+document.getElementById('anaRunBtn').addEventListener('click', () => {
+  const swimmerId = document.getElementById('anaSwimmerSelect').value;
+  const evKey = document.getElementById('anaEventSelect').value;
+  const selVal = document.getElementById('anaResultSelect').value;
+  const area = document.getElementById('analysisArea');
+  if (!swimmerId || !selVal) { showMsg('analysisMsg', '比べる記録がありません', false); return; }
+  const bestRec = DATA.bests[bestKey(swimmerId, anaCourse, evKey)];
+  const bestLaps = bestRec ? bestRec.laps : null;
+  let targetLaps = null, targetName = '';
+  if (selVal === 'BEST') {
+    targetLaps = bestLaps;
+    targetName = '自己ベスト';
+  } else {
+    const [meetId, entryId] = selVal.split('|');
+    const meet = DATA.meets.find(m => m.id === meetId);
+    const entry = meet && meet.entries.find(e => e.id === entryId);
+    if (!entry || !entry.result) { showMsg('analysisMsg', '記録が見つかりません', false); return; }
+    targetLaps = entry.result.laps;
+    targetName = meet.name;
+  }
+  const tSegs = segmentTimes(targetLaps, evKey);
+  const bSegs = bestLaps && selVal !== 'BEST' ? segmentTimes(bestLaps, evKey) : [];
+  if (!tSegs.length) { showMsg('analysisMsg', 'ラップが入っていない記録です', false); return; }
+  const sw = swimmerById(swimmerId);
+  let html = '<div class="card"><h2>ペース比較</h2>';
+  html += `<div class="evtitle">${esc(sw ? sw.name : '')} ${esc(eventLabel(evKey))}（${courseLabel(anaCourse)}）</div>`;
+  html += `<div class="chartbox">${buildChartSvg(tSegs, bSegs, evKey)}<div class="legend"><span class="c">― 対象：${esc(targetName)}</span>${bSegs.length ? '　<span class="g">― 自己ベスト</span>' : ''}</div></div>`;
+  const tHalf = halfSplit(targetLaps, evKey);
+  const bHalf = bestLaps && selVal !== 'BEST' ? halfSplit(bestLaps, evKey) : null;
+  if (tHalf) {
+    html += `<div class="row" style="margin-top:10px;">
+      <div class="card" style="margin:0; padding:10px;"><h2>前半</h2><div class="time" style="font-size:22px; font-weight:800;">${esc(formatTime(tHalf.firstC))}</div>${bHalf ? `<div class="diff ${tHalf.firstC <= bHalf.firstC ? 'plus' : 'minus'}">ベスト比 ${tHalf.firstC - bHalf.firstC >= 0 ? '+' : ''}${esc(formatTime(tHalf.firstC - bHalf.firstC))}</div>` : ''}</div>
+      <div class="card" style="margin:0; padding:10px;"><h2>後半</h2><div class="time" style="font-size:22px; font-weight:800;">${esc(formatTime(tHalf.secondC))}</div>${bHalf ? `<div class="diff ${tHalf.secondC <= bHalf.secondC ? 'plus' : 'minus'}">ベスト比 ${tHalf.secondC - bHalf.secondC >= 0 ? '+' : ''}${esc(formatTime(tHalf.secondC - bHalf.secondC))}</div>` : ''}</div>
+    </div>`;
+  }
+  if (bSegs.length) {
+    const bMap = {};
+    bSegs.forEach(s => { bMap[s.to] = s; });
+    html += '<h2 style="margin-top:14px;">区間ごとの差</h2><table class="diffTable"><tr><th>区間</th><th>対象</th><th>ベスト</th><th>差</th></tr>';
+    tSegs.forEach(s => {
+      const b = bMap[s.to];
+      if (!b) return;
+      const d = s.segC - b.segC;
+      html += `<tr><td>${s.from}-${s.to}m</td><td>${esc(formatTime(s.segC))}</td><td>${esc(formatTime(b.segC))}</td><td style="color:${d <= 0 ? 'var(--ok)' : 'var(--danger)'}">${d >= 0 ? '+' : ''}${esc(formatTime(d))}</td></tr>`;
+    });
+    html += '</table>';
+  } else {
+    html += '<h2 style="margin-top:14px;">区間ラップ</h2><table class="diffTable"><tr><th>区間</th><th>ラップ</th><th>通過</th></tr>';
+    tSegs.forEach(s => {
+      html += `<tr><td>${s.from}-${s.to}m</td><td>${esc(formatTime(s.segC))}</td><td>${esc(formatTime(s.cumC))}</td></tr>`;
+    });
+    html += '</table>';
+  }
+  html += '</div>';
+  area.innerHTML = html;
+  showMsg('analysisMsg', '分析を表示しました', true);
+});
+
+/* ================= 設定 ================= */
+function renderSettingsSummary() {
+  const bestCount = Object.keys(DATA.bests).length;
+  const resultCount = DATA.meets.reduce((n, m) => n + m.entries.filter(e => e.result).length, 0);
+  document.getElementById('dataSummary').textContent =
+    `選手 ${DATA.swimmers.length}名 ／ 自己ベスト ${bestCount}件 ／ 大会 ${DATA.meets.length}件 ／ 結果 ${resultCount}件`;
+}
+function importJSON(text) {
+  try {
+    const parsed = JSON.parse(text);
+    if (!parsed || !Array.isArray(parsed.swimmers) || !Array.isArray(parsed.meets)) throw new Error('形式が違います');
+    DATA = Object.assign(defaultData(), parsed);
+    advanceGrades(DATA, new Date());
+    saveData();
+    renderAll();
+    showMsg('settingsMsg', `読み込みました（選手${DATA.swimmers.length}名／大会${DATA.meets.length}件）`, true);
+  } catch (e) {
+    showMsg('settingsMsg', 'JSONを読み取れませんでした。SwimPBLog／PC版で書き出したファイルか確認してください。', false);
+  }
+}
+document.getElementById('jsonFile').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => importJSON(String(r.result));
+  r.readAsText(f);
+});
+document.getElementById('jsonPasteBtn').addEventListener('click', () => {
+  const t = document.getElementById('jsonPaste').value.trim();
+  if (t) importJSON(t);
+});
+document.getElementById('jsonExportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'swimpblog_backup.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  showMsg('settingsMsg', '書き出しました', true);
+});
+document.getElementById('jsonCopyBtn').addEventListener('click', () => {
+  const out = document.getElementById('jsonOut');
+  out.style.display = 'block';
+  out.value = JSON.stringify(DATA);
+  out.select();
+  if (navigator.clipboard) navigator.clipboard.writeText(out.value).catch(() => {});
+  showMsg('settingsMsg', 'JSONを表示しました（コピー済みの場合があります）', true);
+});
+document.getElementById('dataWipeBtn').addEventListener('click', () => {
+  if (!confirm('全データを削除しますか？この操作は戻せません。')) return;
+  if (!confirm('本当に削除しますか？バックアップ（JSON書き出し）は済んでいますか？')) return;
+  DATA = defaultData();
+  localStorage.setItem(UI_MEET_KEY, '');
+  saveData();
+  renderAll();
+  showMsg('settingsMsg', '全データを削除しました', true);
+});
+
+/* ================= 全体描画 ================= */
+function renderAll() {
+  renderSwimmerList();
+  renderMeetSelects();
+  renderAnalysisSelects();
+  renderSettingsSummary();
+}
 renderAll();
 </script>
 </body>
