@@ -285,7 +285,7 @@
     <div class="card">
       <h2>データの状態</h2>
       <p class="hint" id="dataSummary"></p>
-      <p class="hint">アプリの版：2026.11.17-3（プルダウン版）</p>
+      <p class="hint">アプリの版：2026.11.18-5（読み込み欄分離版）</p>
     </div>
     <div class="card">
       <h2>バックアップを書き出す（JSON）</h2>
@@ -297,10 +297,18 @@
     <div class="card">
       <h2>バックアップを読み込む</h2>
       <p class="hint">今のデータは上書きされます。</p>
-      <input type="file" id="jsonFile" accept=".json,application/json" style="margin-top:8px; color:var(--sub);">
-      <label>またはJSONテキストを貼り付け</label>
-      <textarea id="jsonPaste" placeholder="JSONをここに貼り付け"></textarea>
-      <button class="btn sub" id="jsonPasteBtn">貼り付けたJSONを読み込む</button>
+      <div style="border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:12px; margin-top:10px;">
+        <div class="evtitle">ファイルから読み込む</div>
+        <input type="file" id="jsonFile" accept=".json,application/json" style="margin-top:8px; color:var(--sub);">
+        <p class="hint">ファイルを選ぶと自動で読み込まれます。</p>
+        <p class="hint" id="importMsgFile" style="font-weight:700;"></p>
+      </div>
+      <div style="border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:12px; margin-top:12px;">
+        <div class="evtitle">テキストを貼り付けて読み込む</div>
+        <textarea id="jsonPaste" placeholder="JSONをここに貼り付け"></textarea>
+        <button class="btn sub" id="jsonPasteBtn">貼り付けたJSONを読み込む</button>
+        <p class="hint" id="importMsgPaste" style="font-weight:700;"></p>
+      </div>
     </div>
     <div class="card">
       <h2>危険な操作</h2>
@@ -1252,7 +1260,8 @@ function renderSettingsSummary() {
   document.getElementById('dataSummary').textContent =
     `選手 ${DATA.swimmers.length}名 ／ 自己ベスト ${bestCount}件 ／ 大会 ${DATA.meets.length}件 ／ 結果 ${resultCount}件`;
 }
-function importJSON(text) {
+function importJSON(text, msgId) {
+  const im = document.getElementById(msgId);
   try {
     const parsed = JSON.parse(text);
     if (!parsed || !Array.isArray(parsed.swimmers) || !Array.isArray(parsed.meets)) throw new Error('形式が違います');
@@ -1261,21 +1270,30 @@ function importJSON(text) {
     advanceGrades(DATA, new Date());
     saveData();
     renderAll();
-    showMsg('settingsMsg', `読み込みました（選手${DATA.swimmers.length}名／大会${DATA.meets.length}件）`, true);
+    const msg = `読み込みました（選手${DATA.swimmers.length}名／自己ベスト${Object.keys(DATA.bests).length}件／大会${DATA.meets.length}件）`;
+    showMsg('settingsMsg', msg, true);
+    if (im) { im.textContent = msg; im.style.color = 'var(--gold)'; }
   } catch (e) {
-    showMsg('settingsMsg', 'JSONを読み取れませんでした。SwimPBLog／PC版で書き出したファイルか確認してください。', false);
+    const msg = 'JSONを読み取れませんでした。SwimPBLog／PC版で書き出したファイルか確認してください。';
+    showMsg('settingsMsg', msg, false);
+    if (im) { im.textContent = msg; im.style.color = '#ff8a8a'; }
   }
 }
 document.getElementById('jsonFile').addEventListener('change', e => {
   const f = e.target.files[0];
   if (!f) return;
   const r = new FileReader();
-  r.onload = () => importJSON(String(r.result));
+  r.onload = () => importJSON(String(r.result), 'importMsgFile');
   r.readAsText(f);
 });
 document.getElementById('jsonPasteBtn').addEventListener('click', () => {
   const t = document.getElementById('jsonPaste').value.trim();
-  if (t) importJSON(t);
+  if (t) { importJSON(t, 'importMsgPaste'); return; }
+  const im = document.getElementById('importMsgPaste');
+  if (im) {
+    im.textContent = 'テキストが貼り付けられていません。';
+    im.style.color = '#ff8a8a';
+  }
 });
 document.getElementById('jsonExportBtn').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' });
