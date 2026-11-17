@@ -1,4 +1,4 @@
-[README.md](https://github.com/user-attachments/files/34946548/README.md)
+[README.md](https://github.com/user-attachments/files/34948611/README.md)
 # SwimPBLog（iPhone版）GitHub Pages 用
 
 競泳の自己ベスト・ラップ管理ツールの、結果取り込み専用iPhone版です。
