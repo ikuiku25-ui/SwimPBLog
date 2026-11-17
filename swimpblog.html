@@ -179,6 +179,8 @@
         <input type="text" id="bestMeetName" placeholder="例：東海ジュニア">
         <label>ラップ（通過タイム）</label>
         <div class="lapgrid" id="bestLapInputs"></div>
+        <p class="hint">数字だけでも入力できます（例：11309 と打つと 1:13.09 になります）。</p>
+        <p class="hint" id="bestMsg" style="font-weight:700;"></p>
         <button class="btn" id="bestSaveBtn">ベストを保存</button>
         <button class="btn danger" id="bestDeleteBtn">このベストを削除</button>
       </div>
@@ -230,6 +232,7 @@
     <div class="card" id="resultEditorCard" style="display:none;">
       <h2 id="resultEditorTitle">結果入力</h2>
       <div class="lapgrid" id="resultLapInputs"></div>
+      <p class="hint">数字だけでも入力できます（例：11309 と打つと 1:13.09 になります）。</p>
       <p class="hint" id="resultVerdict"></p>
       <button class="btn" id="resultSaveBtn">結果を保存</button>
       <button class="btn sub" id="resultCancelBtn">閉じる</button>
@@ -498,6 +501,36 @@ function segmentTimes(laps, evKey) {
   });
   return segs;
 }
+/* タイム入力の正規化：コロンが打てない環境向けに、数字だけの入力も受け付ける
+   例：11309 → 1:13.09 ／ 3502 → 35.02 ／ 1.13.09 → 1:13.09 ／ 35.37 → 35.37 */
+function normalizeTimeInput(str) {
+  if (str == null) return '';
+  const s = String(str).trim();
+  if (!s) return '';
+  if (/^\d+$/.test(s)) {
+    // 数字だけの入力は「分・秒・1/100秒」を右詰めで並べたものとして読む（11309→1:13.09）
+    const n = parseInt(s, 10);
+    const cs = n % 100;
+    const sec = Math.floor(n / 100) % 100;
+    const min = Math.floor(n / 10000);
+    if (sec > 59) return s;
+    return formatTime((min * 60 + sec) * 100 + cs);
+  }
+  let m = s.match(/^(\d+)\.(\d{2})\.(\d{2})$/);
+  if (m) return formatTime((parseInt(m[1], 10) * 60 + parseInt(m[2], 10)) * 100 + parseInt(m[3], 10));
+  const direct = parseTime(s);
+  if (direct != null) return formatTime(direct);
+  return s;
+}
+/* 旧形式データの修復：数字だけで保存されたラップ（例：23392）を正規形（2:33.92）に直す */
+function migrateLapTimes(DATA) {
+  const fixLaps = laps => {
+    if (!laps) return;
+    Object.keys(laps).forEach(k => { laps[k] = normalizeTimeInput(laps[k]); });
+  };
+  Object.values(DATA.bests || {}).forEach(rec => fixLaps(rec && rec.laps));
+  (DATA.meets || []).forEach(m => (m.entries || []).forEach(e => { if (e.result) fixLaps(e.result.laps); }));
+}
 function halfSplit(laps, evKey) {
   const ev = eventDef(evKey);
   if (!ev || !laps) return null;
@@ -523,6 +556,7 @@ function loadData() {
   } catch (e) { return defaultData(); }
 }
 let DATA = loadData();
+migrateLapTimes(DATA);
 if (advanceGrades(DATA, new Date()) > 0) { /* 学年を自動で繰り上げた */ }
 let saveTimer = null;
 function saveData() {
@@ -681,9 +715,14 @@ function loadBestEditor() {
   const rec = DATA.bests[bestKey(detailSwimmerId, detailCourse, evKey)];
   document.getElementById('bestMeetName').value = rec ? (rec.meetName || '') : '';
   document.getElementById('bestLapInputs').innerHTML = def.laps.map(p =>
-    `<div class="cell"><label>${p}m</label><input type="text" inputmode="decimal" data-point="${p}" placeholder="0:00.00" value="${rec && rec.laps && rec.laps[p] ? esc(rec.laps[p]) : ''}"></div>`).join('');
+    `<div class="cell"><label>${p}m</label><input type="text" inputmode="numeric" data-point="${p}" placeholder="1:13.09" value="${rec && rec.laps && rec.laps[p] ? esc(rec.laps[p]) : ''}"></div>`).join('');
 }
 document.getElementById('bestEventSelect').addEventListener('change', loadBestEditor);
+function showBestMsg(text, ok) {
+  const el = document.getElementById('bestMsg');
+  el.textContent = text;
+  el.style.color = ok ? 'var(--ok)' : 'var(--danger)';
+}
 document.getElementById('bestSaveBtn').addEventListener('click', () => {
   const evKey = document.getElementById('bestEventSelect').value;
   const laps = {};
@@ -691,27 +730,37 @@ document.getElementById('bestSaveBtn').addEventListener('click', () => {
   document.querySelectorAll('#bestLapInputs input').forEach(inp => {
     const v = inp.value.trim();
     if (v) {
-      if (parseTime(v) == null) invalid = true;
-      laps[inp.dataset.point] = v;
+      const nv = normalizeTimeInput(v);
+      if (parseTime(nv) == null) invalid = true;
+      else laps[inp.dataset.point] = nv;
     }
   });
-  if (invalid) { showMsg('swimmerMsg', 'タイムの形式が違う欄があります（例：1:13.09）', false); return; }
-  if (!Object.keys(laps).length) { showMsg('swimmerMsg', 'タイムが入力されていません', false); return; }
+  if (invalid) { showBestMsg('タイムの形式が違う欄があります（例：1:13.09、または数字だけで 11309）', false); return; }
+  if (!Object.keys(laps).length) { showBestMsg('タイムが入力されていません', false); return; }
   DATA.bests[bestKey(detailSwimmerId, detailCourse, evKey)] = { laps, meetName: document.getElementById('bestMeetName').value.trim() };
   saveData();
   renderBestList();
-  showMsg('swimmerMsg', 'ベストを保存しました', true);
+  loadBestEditor();
+  renderSwimmerList();
+  showBestMsg('ベストを保存しました', true);
 });
 document.getElementById('bestDeleteBtn').addEventListener('click', () => {
   const evKey = document.getElementById('bestEventSelect').value;
   const key = bestKey(detailSwimmerId, detailCourse, evKey);
-  if (!DATA.bests[key]) { showMsg('swimmerMsg', 'このベストは登録されていません', false); return; }
+  if (!DATA.bests[key]) { showBestMsg('このベストは登録されていません', false); return; }
   if (!confirm('このベストを削除しますか？')) return;
   delete DATA.bests[key];
   saveData();
   renderBestList();
   loadBestEditor();
-  showMsg('swimmerMsg', 'ベストを削除しました', true);
+  renderSwimmerList();
+  showBestMsg('ベストを削除しました', true);
+});
+/* タイム欄からフォーカスが外れたら、数字だけの入力を 1:13.09 の形に整える */
+document.addEventListener('focusout', e => {
+  if (e.target && e.target.matches && e.target.matches('#bestLapInputs input, #resultLapInputs input')) {
+    e.target.value = normalizeTimeInput(e.target.value);
+  }
 });
 /* ================= 大会・エントリー ================= */
 let newMeetCourse = 'SC';
@@ -846,7 +895,7 @@ function openResultEditor(entryId) {
   const def = eventDef(entry.eventKey);
   document.getElementById('resultEditorTitle').textContent = `結果入力：${sw ? sw.name : ''} ${eventLabel(entry.eventKey)}`;
   document.getElementById('resultLapInputs').innerHTML = def.laps.map(p =>
-    `<div class="cell"><label>${p}m</label><input type="text" inputmode="decimal" data-point="${p}" placeholder="0:00.00" value="${entry.result && entry.result.laps && entry.result.laps[p] ? esc(entry.result.laps[p]) : ''}"></div>`).join('');
+    `<div class="cell"><label>${p}m</label><input type="text" inputmode="numeric" data-point="${p}" placeholder="1:13.09" value="${entry.result && entry.result.laps && entry.result.laps[p] ? esc(entry.result.laps[p]) : ''}"></div>`).join('');
   updateResultVerdict();
   document.getElementById('resultEditorCard').style.display = 'block';
   document.getElementById('resultEditorCard').scrollIntoView({ behavior: 'smooth' });
@@ -857,8 +906,9 @@ function readResultLaps() {
   document.querySelectorAll('#resultLapInputs input').forEach(inp => {
     const v = inp.value.trim();
     if (v) {
-      if (parseTime(v) == null) invalid = true;
-      laps[inp.dataset.point] = v;
+      const nv = normalizeTimeInput(v);
+      if (parseTime(nv) == null) invalid = true;
+      else laps[inp.dataset.point] = nv;
     }
   });
   return { laps, invalid };
@@ -871,6 +921,7 @@ function updateResultVerdict() {
   const totalC = lapsTotalC(laps, entry.eventKey);
   const v = verdictOf(DATA, entry.swimmerId, meet.course, entry.eventKey, totalC);
   const el = document.getElementById('resultVerdict');
+  el.style.color = '';
   if (v.kind === 'none') el.textContent = '最終地点（トータル）を入力すると、自己ベストと比較します。';
   else if (v.kind === 'first') el.textContent = '自己ベスト未登録のため、この記録が初記録になります。';
   else if (v.kind === 'update') el.textContent = `🎉 自己Best更新！（${formatTime(v.diff)}秒更新）`;
@@ -883,8 +934,9 @@ document.getElementById('resultSaveBtn').addEventListener('click', () => {
   const entry = meet && meet.entries.find(e => e.id === editingEntryId);
   if (!entry) return;
   const { laps, invalid } = readResultLaps();
-  if (invalid) { showMsg('meetMsg', 'タイムの形式が違う欄があります（例：1:13.09）', false); return; }
-  if (!Object.keys(laps).length) { showMsg('meetMsg', 'タイムが入力されていません', false); return; }
+  const verdictEl = document.getElementById('resultVerdict');
+  if (invalid) { verdictEl.textContent = 'タイムの形式が違う欄があります（例：1:13.09、または数字だけで 11309）'; verdictEl.style.color = 'var(--danger)'; return; }
+  if (!Object.keys(laps).length) { verdictEl.textContent = 'タイムが入力されていません'; verdictEl.style.color = 'var(--danger)'; return; }
   const totalC = lapsTotalC(laps, entry.eventKey);
   const v = verdictOf(DATA, entry.swimmerId, meet.course, entry.eventKey, totalC);
   entry.result = { laps, appliedToBest: false, beatBest: (v.kind === 'update' || v.kind === 'first') };
@@ -1179,6 +1231,7 @@ function importJSON(text) {
     const parsed = JSON.parse(text);
     if (!parsed || !Array.isArray(parsed.swimmers) || !Array.isArray(parsed.meets)) throw new Error('形式が違います');
     DATA = Object.assign(defaultData(), parsed);
+    migrateLapTimes(DATA);
     advanceGrades(DATA, new Date());
     saveData();
     renderAll();
