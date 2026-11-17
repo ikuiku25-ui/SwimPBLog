@@ -158,23 +158,23 @@
       <div class="card" style="margin-top:12px;">
         <div class="name" id="detailName" style="font-size:20px; font-weight:800;"></div>
         <div class="meta hint" id="detailMeta"></div>
-        <div class="row" style="margin-top:10px;">
-          <button class="btn sub" id="detailEditBtn">選手情報を編集</button>
-          <button class="btn danger" id="detailDeleteBtn">選手を削除</button>
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px;">
+          <button class="btn sub" id="detailEditBtn" style="width:auto; margin-top:0; padding:11px 20px;">編集</button>
+          <button class="btn danger" id="detailDeleteBtn" style="width:auto; margin-top:0; padding:11px 20px;">削除</button>
         </div>
       </div>
       <div class="card">
         <h2>自己ベスト</h2>
         <div class="seg" id="bestCourseSeg">
-          <button type="button" data-course="SC" class="active">短水路(25m)</button>
-          <button type="button" data-course="LC">長水路(50m)</button>
+          <button type="button" data-course="SC" class="active">短水路</button>
+          <button type="button" data-course="LC">長水路</button>
         </div>
         <div id="bestList" style="margin-top:8px;"></div>
+        <div id="bestDisplay" style="margin-top:10px;"></div>
       </div>
       <div class="card">
         <h2>ベストを入力・編集</h2>
-        <label>種目</label>
-        <select id="bestEventSelect"></select>
+        <div class="evtitle" id="bestEditorEventTitle"></div>
         <label>記録した大会名</label>
         <input type="text" id="bestMeetName" placeholder="例：東海ジュニア">
         <label>ラップ（通過タイム）</label>
@@ -644,6 +644,7 @@ document.getElementById('swimmerCancelBtn').addEventListener('click', resetSwimm
 /* ----- 選手詳細・ベスト管理 ----- */
 let detailSwimmerId = null;
 let detailCourse = 'SC';
+let detailEventKey = 'BR200';
 function openSwimmerDetail(id) {
   detailSwimmerId = id;
   const sw = swimmerById(id);
@@ -652,10 +653,21 @@ function openSwimmerDetail(id) {
   document.getElementById('swimmerDetailView').style.display = 'block';
   document.getElementById('detailName').textContent = sw.name;
   document.getElementById('detailMeta').textContent = `${sw.gender || ''} ／ ${sw.grade || ''}`;
-  document.getElementById('bestEventSelect').innerHTML = eventOptionsHtml('BR200');
+  pickDefaultBestEvent();
   renderBestList();
   loadBestEditor();
   window.scrollTo(0, 0);
+}
+function pickDefaultBestEvent() {
+  const cur = DATA.bests[bestKey(detailSwimmerId, detailCourse, detailEventKey)];
+  if (cur) return;
+  const withBest = EVENT_DEFS.find(ev => DATA.bests[bestKey(detailSwimmerId, detailCourse, eventKey(ev.code, ev.dist))]);
+  if (withBest) detailEventKey = eventKey(withBest.code, withBest.dist);
+}
+function selectBestEvent(evKey) {
+  detailEventKey = evKey;
+  renderBestList();
+  loadBestEditor();
 }
 document.getElementById('detailBackBtn').addEventListener('click', resetSwimmerForm);
 document.getElementById('detailEditBtn').addEventListener('click', () => {
@@ -692,39 +704,53 @@ document.querySelectorAll('#bestCourseSeg button').forEach(b => {
   b.addEventListener('click', () => {
     detailCourse = b.dataset.course;
     document.querySelectorAll('#bestCourseSeg button').forEach(x => x.classList.toggle('active', x === b));
+    pickDefaultBestEvent();
     renderBestList();
     loadBestEditor();
   });
 });
 function renderBestList() {
   const box = document.getElementById('bestList');
-  const items = EVENT_DEFS.map(ev => {
+  box.innerHTML = EVENT_DEFS.map(ev => {
     const k = eventKey(ev.code, ev.dist);
     const rec = DATA.bests[bestKey(detailSwimmerId, detailCourse, k)];
-    if (!rec || !rec.laps) return null;
-    const total = lapsTotalC(rec.laps, k);
-    const lapsText = ev.laps.filter(p => rec.laps[p]).map(p => `${p}m ${rec.laps[p]}`).join(' → ');
-    return `<div class="listline"><b>${ev.dist}m ${STROKE_LABEL[ev.code]}</b> <b>${total != null ? esc(formatTime(total)) : ''}</b>
-      <span style="color:var(--sub)">${esc(rec.meetName || '')}</span><br><span style="color:var(--sub); font-size:12px;">${esc(lapsText)}</span></div>`;
-  }).filter(Boolean);
-  box.innerHTML = items.length ? items.join('') : `<p class="hint">${courseLabel(detailCourse)}のベストはまだありません。</p>`;
+    const total = rec && rec.laps ? lapsTotalC(rec.laps, k) : null;
+    const selected = k === detailEventKey;
+    return `<div class="listline" onclick="selectBestEvent('${k}')" style="cursor:pointer; padding:10px; border-radius:12px; ${selected ? 'background:rgba(34,211,238,.14); border:1px solid rgba(34,211,238,.45);' : 'border:1px solid transparent;'}">
+      <b>${ev.dist}m ${STROKE_LABEL[ev.code]}</b>
+      <span style="float:right; ${total != null ? 'font-weight:800;' : 'color:var(--sub);'}">${total != null ? esc(formatTime(total)) : '未登録'}</span></div>`;
+  }).join('');
+  const rec = DATA.bests[bestKey(detailSwimmerId, detailCourse, detailEventKey)];
+  const disp = document.getElementById('bestDisplay');
+  if (rec && rec.laps) {
+    const def = eventDef(detailEventKey);
+    const total = lapsTotalC(rec.laps, detailEventKey);
+    const lapsText = def.laps.filter(p => rec.laps[p]).map(p => `${p}m ${rec.laps[p]}`).join(' → ');
+    disp.innerHTML = `<div style="border-top:1px solid rgba(255,255,255,.1); padding-top:10px;">
+      <div class="meta hint">${esc(eventLabel(detailEventKey))} ／ ${esc(rec.meetName || '大会名なし')}</div>
+      <div class="time" style="font-size:30px; font-weight:800; font-variant-numeric:tabular-nums;">${total != null ? esc(formatTime(total)) : ''}</div>
+      <div class="laps" style="font-size:12.5px; color:#cfeeff; line-height:1.7;">${esc(lapsText)}</div></div>`;
+  } else {
+    disp.innerHTML = `<p class="hint">${esc(eventLabel(detailEventKey))}のベストは未登録です。下のフォームから入力できます。</p>`;
+  }
 }
 function loadBestEditor() {
-  const evKey = document.getElementById('bestEventSelect').value;
+  const evKey = detailEventKey;
   const def = eventDef(evKey);
   const rec = DATA.bests[bestKey(detailSwimmerId, detailCourse, evKey)];
+  document.getElementById('bestEditorEventTitle').textContent = eventLabel(evKey) + '（' + (detailCourse === 'LC' ? '長水路' : '短水路') + '）';
   document.getElementById('bestMeetName').value = rec ? (rec.meetName || '') : '';
+  document.getElementById('bestMsg').textContent = '';
   document.getElementById('bestLapInputs').innerHTML = def.laps.map(p =>
     `<div class="cell"><label>${p}m</label><input type="text" inputmode="numeric" data-point="${p}" placeholder="1:13.09" value="${rec && rec.laps && rec.laps[p] ? esc(rec.laps[p]) : ''}"></div>`).join('');
 }
-document.getElementById('bestEventSelect').addEventListener('change', loadBestEditor);
 function showBestMsg(text, ok) {
   const el = document.getElementById('bestMsg');
   el.textContent = text;
   el.style.color = ok ? 'var(--ok)' : 'var(--danger)';
 }
 document.getElementById('bestSaveBtn').addEventListener('click', () => {
-  const evKey = document.getElementById('bestEventSelect').value;
+  const evKey = detailEventKey;
   const laps = {};
   let invalid = false;
   document.querySelectorAll('#bestLapInputs input').forEach(inp => {
@@ -745,7 +771,7 @@ document.getElementById('bestSaveBtn').addEventListener('click', () => {
   showBestMsg('ベストを保存しました', true);
 });
 document.getElementById('bestDeleteBtn').addEventListener('click', () => {
-  const evKey = document.getElementById('bestEventSelect').value;
+  const evKey = detailEventKey;
   const key = bestKey(detailSwimmerId, detailCourse, evKey);
   if (!DATA.bests[key]) { showBestMsg('このベストは登録されていません', false); return; }
   if (!confirm('このベストを削除しますか？')) return;
