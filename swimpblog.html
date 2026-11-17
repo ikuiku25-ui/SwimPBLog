@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SwimPBLog">
+<title>SwimPBLog｜結果を取り込む</title>
+<style>
+  :root{
+    --bg1:#04101f; --bg2:#07263f; --cyan:#22d3ee; --cyan2:#0ea5c8;
+    --gold:#f5c451; --gold2:#b8860b; --card:rgba(255,255,255,.06);
+    --card-border:rgba(120,220,255,.22); --text:#eaf7ff; --sub:#9db8cc;
+    --danger:#ff8a8a; --ok:#5eead4;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family:-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    color:var(--text); min-height:100vh;
+    background:
+      radial-gradient(120% 60% at 85% -10%, rgba(34,211,238,.28), transparent 60%),
+      radial-gradient(100% 50% at -10% 110%, rgba(14,116,233,.25), transparent 55%),
+      linear-gradient(180deg, var(--bg1), var(--bg2) 55%, #03101f);
+    background-attachment:fixed;
+    padding-bottom:calc(86px + env(safe-area-inset-bottom));
+  }
+  header{ padding:calc(14px + env(safe-area-inset-top)) 18px 6px; }
+  header h1{ font-size:21px; margin:0; letter-spacing:.04em; }
+  header p{ margin:4px 0 0; color:var(--sub); font-size:12px; }
+  main{ padding:10px 14px 20px; }
+  .tabpage{ display:none; }
+  .tabpage.active{ display:block; }
+  .card{
+    background:var(--card); border:1px solid var(--card-border);
+    border-radius:18px; padding:14px; margin-bottom:12px;
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    box-shadow:0 8px 24px rgba(0,0,0,.35);
+  }
+  .card h2{ font-size:14px; margin:0 0 10px; color:#cfeeff; letter-spacing:.05em; }
+  label{ display:block; font-size:12px; color:var(--sub); margin:10px 0 4px; }
+  select,input[type=text],textarea{
+    width:100%; background:rgba(0,0,0,.35); color:var(--text);
+    border:1px solid rgba(140,200,240,.35); border-radius:12px;
+    padding:11px 12px; font-size:15px; outline:none;
+  }
+  textarea{ min-height:130px; font-size:13px; line-height:1.5; }
+  select:focus,input:focus,textarea:focus{ border-color:var(--cyan); }
+  .btn{
+    display:block; width:100%; border:none; cursor:pointer;
+    padding:14px; border-radius:999px; font-size:16px; font-weight:700;
+    color:#03222e; background:linear-gradient(180deg,#67e8f9,var(--cyan2));
+    box-shadow:0 6px 18px rgba(34,211,238,.35); margin-top:12px;
+  }
+  .btn:disabled{ opacity:.4; box-shadow:none; }
+  .btn.sub{
+    background:rgba(255,255,255,.08); color:var(--text);
+    border:1px solid rgba(140,200,240,.4); box-shadow:none; font-size:14px; padding:11px;
+  }
+  .btn.gold{ background:linear-gradient(180deg,#ffe08a,var(--gold)); color:#3a2a00; box-shadow:0 6px 18px rgba(245,196,81,.35); }
+  .row{ display:flex; gap:8px; }
+  .row > *{ flex:1; }
+  .hint{ font-size:12px; color:var(--sub); line-height:1.6; }
+  .meetline{ font-size:13px; color:#cfeeff; }
+  .evtitle{ font-size:16px; font-weight:700; margin:2px 0 8px; }
+  .pcard{ position:relative; }
+  .pcard .name{ font-size:18px; font-weight:800; }
+  .pcard .meta{ font-size:12px; color:var(--sub); margin-top:2px; }
+  .pcard .time{ font-size:32px; font-weight:800; letter-spacing:.02em; margin:6px 0 2px;
+    font-variant-numeric:tabular-nums; }
+  .pcard .laps{ font-size:12.5px; color:#cfeeff; line-height:1.7; font-variant-numeric:tabular-nums; }
+  .badge{
+    display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700;
+    background:linear-gradient(180deg,#ffe08a,var(--gold)); color:#3a2a00;
+    position:absolute; top:12px; right:12px;
+  }
+  .badge.grey{ background:rgba(255,255,255,.12); color:var(--sub); }
+  .badge.teal{ background:rgba(94,234,212,.18); color:var(--ok); }
+  .diff{ font-size:13px; font-weight:700; }
+  .diff.plus{ color:var(--ok); } .diff.minus{ color:var(--danger); }
+  .checkline{ display:flex; align-items:center; gap:8px; margin-top:10px; font-size:13px; }
+  .checkline input{ width:20px; height:20px; accent-color:var(--cyan2); }
+  .unmatched{ opacity:.55; }
+  .msg{ font-size:13px; padding:10px 12px; border-radius:12px; margin-bottom:12px; display:none; }
+  .msg.show{ display:block; }
+  .msg.ok{ background:rgba(94,234,212,.14); color:var(--ok); border:1px solid rgba(94,234,212,.4); }
+  .msg.err{ background:rgba(255,138,138,.12); color:var(--danger); border:1px solid rgba(255,138,138,.4); }
+  .entryline{ font-size:13px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,.08); line-height:1.55; }
+  .entryline:last-child{ border-bottom:none; }
+  .entryline b{ font-size:14px; }
+  .swimmerline{ font-size:13.5px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.08); }
+  .swimmerline:last-child{ border-bottom:none; }
+  nav.tabbar{
+    position:fixed; left:10px; right:10px; bottom:calc(8px + env(safe-area-inset-bottom));
+    display:flex; gap:6px; padding:8px;
+    background:rgba(4,20,36,.82); border:1px solid var(--card-border); border-radius:22px;
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); z-index:50;
+  }
+  nav.tabbar button{
+    flex:1; border:none; background:transparent; color:var(--sub); cursor:pointer;
+    font-size:13px; font-weight:700; padding:9px 0; border-radius:14px;
+  }
+  nav.tabbar button.active{ color:#03222e; background:linear-gradient(180deg,#67e8f9,var(--cyan2)); }
+  .seg{ display:flex; gap:6px; }
+  .seg button{
+    flex:1; padding:9px 0; border-radius:10px; border:1px solid rgba(140,200,240,.4);
+    background:rgba(0,0,0,.3); color:var(--sub); font-weight:700; font-size:13px; cursor:pointer;
+  }
+  .seg button.active{ background:rgba(34,211,238,.25); color:var(--text); border-color:var(--cyan); }
+  #saveStatus{ font-size:11px; color:var(--sub); text-align:right; padding:0 18px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>結果を取り込む</h1>
+  <p>公式速報サイトからコピーして貼るだけ。判定と反映はこの場でできます。</p>
+</header>
+<div id="saveStatus"></div>
+
+<main>
+  <!-- ===== 取り込み ===== -->
+  <section class="tabpage active" id="page-import">
+    <div class="msg" id="importMsg"></div>
+    <div class="card">
+      <h2>取り込み先の大会</h2>
+      <select id="meetSelect"></select>
+      <p class="hint" id="meetInfo"></p>
+      <p class="hint">大会が無いときは「大会」タブで先に作ってください。速報の大会名から作ることもできます（読み取り後）。</p>
+    </div>
+    <div class="card">
+      <h2>速報のテキストを貼り付け</h2>
+      <textarea id="pasteArea" placeholder="live-results.swim.or.jp のランキング画面で、取り込みたい選手の「＋」を展開してから、ページをコピーしてここに貼り付け"></textarea>
+      <button class="btn" id="parseBtn">読み取る</button>
+      <p class="hint">ラップは「＋」を展開した選手の分だけ読み取れます。展開していない選手は記録とベストだけ入ります。順位は取り込みません。</p>
+    </div>
+    <div id="previewArea"></div>
+  </section>
+
+  <!-- ===== 大会 ===== -->
+  <section class="tabpage" id="page-meets">
+    <div class="msg" id="meetMsg"></div>
+    <div class="card">
+      <h2>大会を作る</h2>
+      <label>大会名</label>
+      <input type="text" id="newMeetName" placeholder="例：第9回三重とこわか(25m)水泳競技大会">
+      <label>日付（1日目）</label>
+      <input type="text" id="newMeetDate" placeholder="例：2026-11-14">
+      <label>水路</label>
+      <div class="seg" id="courseSeg">
+        <button type="button" data-course="SC" class="active">短水路(25m)</button>
+        <button type="button" data-course="LC">長水路(50m)</button>
+      </div>
+      <button class="btn" id="meetCreateBtn">大会を作成</button>
+    </div>
+    <div class="card">
+      <h2>大会一覧</h2>
+      <div id="meetList"></div>
+    </div>
+    <div class="card">
+      <h2>取り込み済みの結果</h2>
+      <div id="importedList"><p class="hint">大会を選ぶと表示します。</p></div>
+    </div>
+  </section>
+
+  <!-- ===== 設定 ===== -->
+  <section class="tabpage" id="page-settings">
+    <div class="msg" id="settingsMsg"></div>
+    <div class="card">
+      <h2>データの読み込み（PC版から）</h2>
+      <p class="hint">PC版の設定タブで書き出したJSONを読み込むと、選手・自己ベスト・大会がこのiPhoneに入ります。今のデータは上書きされます。</p>
+      <input type="file" id="jsonFile" accept=".json,application/json" style="margin-top:8px; color:var(--sub);">
+      <label>またはJSONテキストを貼り付け</label>
+      <textarea id="jsonPaste" placeholder="JSONをここに貼り付け"></textarea>
+      <button class="btn sub" id="jsonPasteBtn">貼り付けたJSONを読み込む</button>
+    </div>
+    <div class="card">
+      <h2>データの書き出し（PC版へ）</h2>
+      <p class="hint">取り込みと反映が終わったら書き出して、PC版の設定タブで読み込んでください。</p>
+      <button class="btn" id="jsonExportBtn">JSONファイルを書き出す</button>
+      <button class="btn sub" id="jsonCopyBtn">JSONテキストを表示・コピー</button>
+      <textarea id="jsonOut" style="display:none; margin-top:10px;" readonly></textarea>
+    </div>
+    <div class="card">
+      <h2>登録選手</h2>
+      <div id="swimmerList"></div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button data-tab="import" class="active">取り込み</button>
+  <button data-tab="meets">大会</button>
+  <button data-tab="settings">設定</button>
+</nav>
+
+<script>
+'use strict';
+/* ================= 純ロジック（PC版 swim_best_lap_2.html と同一仕様） ================= */
+const STROKE_LABEL = { FR: '自由形', BR: '平泳ぎ', BA: '背泳ぎ', FLY: 'バタフライ', IM: '個人メドレー' };
+const STROKE_CODE = { '自由形': 'FR', '平泳ぎ': 'BR', '背泳ぎ': 'BA', 'バタフライ': 'FLY', '個人メドレー': 'IM' };
+const EVENT_DEFS = [
+  { code: 'FR',  dist: 50,   laps: [15, 25, 50] },
+  { code: 'FR',  dist: 100,  laps: [25, 50, 75, 100] },
+  { code: 'FR',  dist: 200,  laps: [50, 75, 100, 150, 200] },
+  { code: 'FR',  dist: 400,  laps: [50, 100, 150, 200, 250, 300, 350, 400] },
+  { code: 'FR',  dist: 800,  laps: [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800] },
+  { code: 'FR',  dist: 1500, laps: [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500] },
+  { code: 'BR',  dist: 50,   laps: [15, 25, 50] },
+  { code: 'BR',  dist: 100,  laps: [15, 25, 50, 75, 100] },
+  { code: 'BR',  dist: 200,  laps: [15, 25, 50, 75, 100, 150, 200] },
+  { code: 'BA',  dist: 50,   laps: [15, 25, 50] },
+  { code: 'BA',  dist: 100,  laps: [15, 25, 50, 75, 100] },
+  { code: 'BA',  dist: 200,  laps: [15, 25, 50, 75, 100, 150, 200] },
+  { code: 'FLY', dist: 50,   laps: [15, 25, 50] },
+  { code: 'FLY', dist: 100,  laps: [15, 25, 50, 75, 100] },
+  { code: 'FLY', dist: 200,  laps: [15, 25, 50, 75, 100, 150, 200] },
+  { code: 'IM',  dist: 200,  laps: [15, 25, 50, 75, 100, 150, 200] },
+  { code: 'IM',  dist: 400,  laps: [50, 100, 150, 200, 250, 300, 350, 400] },
+];
+function eventKey(code, dist) { return code + dist; }
+function eventDef(key) { return EVENT_DEFS.find(e => eventKey(e.code, e.dist) === key); }
+function eventLabel(key) { const d = eventDef(key); return d ? `${d.dist}m ${STROKE_LABEL[d.code]}` : key; }
+function bestKey(swimmerId, course, evKey) { return `${swimmerId}__${course}__${evKey}`; }
+
+function parseTime(str) {
+  if (str == null) return null;
+  const s = String(str).trim();
+  if (s === '') return null;
+  let m = s.match(/^(\d+):(\d{1,2})(?:\.(\d{1,2}))?$/);
+  if (m) {
+    const cs = m[3] ? parseInt((m[3] + '0').slice(0, 2), 10) : 0;
+    return (parseInt(m[1], 10) * 60 + parseInt(m[2], 10)) * 100 + cs;
+  }
+  m = s.match(/^(\d+)(?:\.(\d{1,2}))?$/);
+  if (m) {
+    const cs = m[2] ? parseInt((m[2] + '0').slice(0, 2), 10) : 0;
+    return parseInt(m[1], 10) * 100 + cs;
+  }
+  return null;
+}
+function formatTime(centi) {
+  if (centi == null || isNaN(centi)) return '';
+  const cs = centi % 100;
+  const totalSec = Math.floor(centi / 100);
+  const sec = totalSec % 60;
+  const min = Math.floor(totalSec / 60);
+  const csStr = String(cs).padStart(2, '0');
+  const secStr = String(sec).padStart(2, '0');
+  if (min > 0) return `${min}:${secStr}.${csStr}`;
+  return `${sec}.${csStr}`;
+}
+function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); }
+function normalizeName(name) { return String(name || '').normalize('NFKC').replace(/[\s　]+/g, ''); }
+
+/* ---------- 速報 live-results.swim.or.jp 形式パーサー ---------- */
+function parseLiveResults(text) {
+  const result = { meet: null, event: null, swimmers: [] };
+  const mMeet = text.match(/TOP\s*>\s*(.+)/);
+  if (mMeet) result.meet = mMeet[1].trim();
+  const mEvent = text.match(/No\.(\d+)\s+(男子|女子|混合)\s+(.+)\n(\d+)m\s*(.+?)\s*(タイム決勝|決勝|予選)/);
+  if (mEvent) {
+    result.event = { no: +mEvent[1], gender: mEvent[2], cls: mEvent[3].trim(), distance: +mEvent[4], style: mEvent[5].trim(), phase: mEvent[6] };
+    result.event.code = STROKE_CODE[result.event.style] || null;
+    result.event.key = result.event.code ? eventKey(result.event.code, result.event.distance) : null;
+  }
+  const rowRe = /(\d+)\t(\d+)組\n第(\d+)レーン\n([^\n]+)\n([^\n]+)\n\(([^)]+)\)\t(\d+:\d+\.\d+|\d+\.\d+)\n\[(\d+:\d+\.\d+|\d+\.\d+)\]\t(\d+)級/g;
+  let m;
+  const rows = [];
+  while ((m = rowRe.exec(text)) !== null) {
+    rows.push({ idx: m.index, end: rowRe.lastIndex, heat: m[2], lane: m[3],
+      name: m[4], nameNorm: normalizeName(m[4]), team: m[5].normalize('NFKC'), grade: m[6],
+      time: m[7], siteBest: m[8], klass: m[9] + '級' });
+  }
+  rows.forEach((r, i) => {
+    const segEnd = (i + 1 < rows.length) ? rows[i + 1].idx : text.length;
+    const seg = text.slice(r.end, segEnd);
+    const laps = [];
+    let rt = null;
+    const lapRe = /^(\d+)m\t(\d+:\d+\.\d+|\d+\.\d+)\t(\d+:\d+\.\d+|\d+\.\d+)\t(.+)$/gm;
+    let lm;
+    while ((lm = lapRe.exec(seg)) !== null) {
+      laps.push({ dist: +lm[1], cum: lm[2], lap: lm[3] });
+      const rtm = lm[4].match(/RT:(\d+\.\d+)/);
+      if (rtm) rt = rtm[1];
+    }
+    r.laps = laps;
+    r.rt = rt;
+    delete r.idx; delete r.end;
+    result.swimmers.push(r);
+  });
+  return result;
+}
+
+/* ---------- データ操作（PC版と同一セマンティクス） ---------- */
+function resultLapsForEntry(parsedSwimmer, evKey) {
+  const def = eventDef(evKey);
+  if (!def) return {};
+  const byDist = {};
+  parsedSwimmer.laps.forEach(l => { byDist[l.dist] = l.cum; });
+  const laps = {};
+  def.laps.forEach(p => { if (byDist[p]) laps[p] = byDist[p]; });
+  if (!laps[def.laps[def.laps.length - 1]] && parsedSwimmer.time) {
+    laps[def.laps[def.laps.length - 1]] = parsedSwimmer.time;
+  }
+  return laps;
+}
+function currentBestTotalC(DATA, swimmerId, course, evKey) {
+  const ev = eventDef(evKey);
+  if (!ev) return null;
+  const rec = DATA.bests[bestKey(swimmerId, course, evKey)];
+  if (!rec || !rec.laps) return null;
+  const last = ev.laps[ev.laps.length - 1];
+  return parseTime(rec.laps[last] || '');
+}
+function entryResultTotalC(entry) {
+  const ev = eventDef(entry.eventKey);
+  if (!ev || !entry.result || !entry.result.laps) return null;
+  const last = ev.laps[ev.laps.length - 1];
+  return parseTime(entry.result.laps[last] || '');
+}
+function applyResultToBest(DATA, entry, meet) {
+  const ev = eventDef(entry.eventKey);
+  if (!ev || !entry.result) return false;
+  const totalC = entryResultTotalC(entry);
+  if (totalC == null) return false;
+  const oldBestC = currentBestTotalC(DATA, entry.swimmerId, meet.course, entry.eventKey);
+  const laps = {};
+  ev.laps.forEach(p => { if (entry.result.laps[p]) laps[p] = entry.result.laps[p]; });
+  DATA.bests[bestKey(entry.swimmerId, meet.course, entry.eventKey)] = { laps, meetName: meet.name };
+  entry.result.appliedToBest = true;
+  entry.result.beatBest = (oldBestC == null || totalC < oldBestC);
+  return true;
+}
+/* ================= データ保存（PC版と同一キー・同一形式） ================= */
+const STORAGE_KEY = 'swimLapTool_v1';
+const UI_MEET_KEY = 'swimImportIphone_currentMeet';
+function defaultData() {
+  return { swimmers: [], bests: {}, meets: [],
+    meta: { lastGradeUpdateFY: null },
+    settings: { titleImage: null, swimmerImage: null, bgImage: null } };
+}
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultData();
+    return Object.assign(defaultData(), JSON.parse(raw));
+  } catch (e) { return defaultData(); }
+}
+let DATA = loadData();
+let saveTimer = null;
+function saveData() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
+    const el = document.getElementById('saveStatus');
+    if (el) el.textContent = '保存済み ' + new Date().toLocaleTimeString('ja-JP');
+  }, 200);
+}
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function showMsg(id, text, ok) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'msg show ' + (ok ? 'ok' : 'err');
+}
+function currentMeet() { return DATA.meets.find(m => m.id === localStorage.getItem(UI_MEET_KEY)) || null; }
+function setCurrentMeet(id) { localStorage.setItem(UI_MEET_KEY, id || ''); renderAll(); }
+function swimmerById(id) { return DATA.swimmers.find(s => s.id === id); }
+function courseLabel(c) { return c === 'LC' ? '長水路(50m)' : '短水路(25m)'; }
+
+/* ================= タブ ================= */
+document.querySelectorAll('nav.tabbar button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('nav.tabbar button').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.tabpage').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + btn.dataset.tab).classList.add('active');
+    window.scrollTo(0, 0);
+  });
+});
+
+/* ================= 大会 ================= */
+let newMeetCourse = 'SC';
+document.querySelectorAll('#courseSeg button').forEach(b => {
+  b.addEventListener('click', () => {
+    newMeetCourse = b.dataset.course;
+    document.querySelectorAll('#courseSeg button').forEach(x => x.classList.toggle('active', x === b));
+  });
+});
+document.getElementById('meetCreateBtn').addEventListener('click', () => {
+  const name = document.getElementById('newMeetName').value.trim();
+  if (!name) { showMsg('meetMsg', '大会名を入力してください', false); return; }
+  const date = document.getElementById('newMeetDate').value.trim();
+  const meet = { id: uid(), name, dates: date ? [date] : [], course: newMeetCourse, entries: [] };
+  DATA.meets.push(meet);
+  saveData();
+  document.getElementById('newMeetName').value = '';
+  document.getElementById('newMeetDate').value = '';
+  setCurrentMeet(meet.id);
+  showMsg('meetMsg', '大会を作成しました', true);
+});
+function renderMeetSelect() {
+  const sel = document.getElementById('meetSelect');
+  const cur = currentMeet();
+  sel.innerHTML = DATA.meets.length
+    ? DATA.meets.map(m => `<option value="${m.id}" ${cur && m.id === cur.id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')
+    : '<option value="">（大会がありません）</option>';
+  const info = document.getElementById('meetInfo');
+  if (cur) info.textContent = `${courseLabel(cur.course)}／${(cur.dates || []).join('・') || '日付未設定'}／エントリー ${cur.entries.length}件`;
+  else info.textContent = '';
+  document.getElementById('meetList').innerHTML = DATA.meets.length
+    ? DATA.meets.map(m => `<div class="entryline"><b>${esc(m.name)}</b><br>${courseLabel(m.course)}／${(m.dates || []).join('・') || '日付未設定'}／結果 ${m.entries.filter(e => e.result).length}件
+        <button class="btn sub" style="margin-top:6px;" onclick="setCurrentMeet('${m.id}')">この大会を選ぶ</button></div>`).join('')
+    : '<p class="hint">まだ大会がありません。</p>';
+  renderImportedList();
+}
+document.getElementById('meetSelect').addEventListener('change', e => setCurrentMeet(e.target.value));
+function renderImportedList() {
+  const box = document.getElementById('importedList');
+  const meet = currentMeet();
+  if (!meet) { box.innerHTML = '<p class="hint">大会を選ぶと表示します。</p>'; return; }
+  const withResult = meet.entries.filter(e => e.result);
+  if (!withResult.length) { box.innerHTML = '<p class="hint">この大会にはまだ結果が入っていません。</p>'; return; }
+  box.innerHTML = withResult.map(e => {
+    const sw = swimmerById(e.swimmerId);
+    const total = entryResultTotalC(e);
+    const badge = e.result.appliedToBest ? 'ベスト反映済み'
+      : (e.result.beatBest ? '🎉 自己Best更新（未反映）' : '');
+    return `<div class="entryline"><b>${esc(sw ? sw.name : '不明')}</b> ${esc(eventLabel(e.eventKey))} <b>${total != null ? esc(formatTime(total)) : ''}</b>${badge ? '<br>' + badge : ''}</div>`;
+  }).join('');
+}
+
+/* ================= 設定：JSON往復・選手 ================= */
+function importJSON(text) {
+  try {
+    const parsed = JSON.parse(text);
+    if (!parsed || !Array.isArray(parsed.swimmers) || !Array.isArray(parsed.meets)) throw new Error('形式が違います');
+    DATA = Object.assign(defaultData(), parsed);
+    saveData();
+    renderAll();
+    showMsg('settingsMsg', `読み込みました（選手${DATA.swimmers.length}名／大会${DATA.meets.length}件）`, true);
+  } catch (e) {
+    showMsg('settingsMsg', 'JSONを読み取れませんでした。PC版で書き出したファイルか確認してください。', false);
+  }
+}
+document.getElementById('jsonFile').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => importJSON(String(r.result));
+  r.readAsText(f);
+});
+document.getElementById('jsonPasteBtn').addEventListener('click', () => {
+  const t = document.getElementById('jsonPaste').value.trim();
+  if (t) importJSON(t);
+});
+document.getElementById('jsonExportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'swim_data_export.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  showMsg('settingsMsg', '書き出しました。PC版の設定タブで読み込んでください。', true);
+});
+document.getElementById('jsonCopyBtn').addEventListener('click', () => {
+  const out = document.getElementById('jsonOut');
+  out.style.display = 'block';
+  out.value = JSON.stringify(DATA);
+  out.select();
+  if (navigator.clipboard) navigator.clipboard.writeText(out.value).catch(() => {});
+  showMsg('settingsMsg', 'JSONを表示しました（コピー済みの場合があります）', true);
+});
+function renderSwimmers() {
+  document.getElementById('swimmerList').innerHTML = DATA.swimmers.length
+    ? DATA.swimmers.map(s => `<div class="swimmerline">${esc(s.name)}<span style="color:var(--sub)"> ／ ${esc(s.gender || '')} ／ ${esc(s.grade || '')}</span></div>`).join('')
+    : '<p class="hint">選手が未登録です。PC版からJSONを読み込んでください。</p>';
+}
+
+/* ================= 取り込み ================= */
+let lastParsed = null;
+let importedOnce = false;
+document.getElementById('parseBtn').addEventListener('click', () => {
+  const text = document.getElementById('pasteArea').value;
+  if (!text.trim()) { showMsg('importMsg', 'テキストが貼られていません', false); return; }
+  lastParsed = parseLiveResults(text);
+  importedOnce = false;
+  if (!lastParsed.swimmers.length) {
+    showMsg('importMsg', '選手の行を読み取れませんでした。速報のランキング画面をコピーしたか確認してください。', false);
+    document.getElementById('previewArea').innerHTML = '';
+    return;
+  }
+  showMsg('importMsg', `${lastParsed.swimmers.length}名を読み取りました`, true);
+  renderPreview();
+});
+function guessCourse(meetName) { return /\(50m\)|（50m）/.test(meetName || '') ? 'LC' : 'SC'; }
+function createMeetFromParsed() {
+  const meet = { id: uid(), name: lastParsed.meet, dates: [], course: guessCourse(lastParsed.meet), entries: [] };
+  DATA.meets.push(meet);
+  saveData();
+  setCurrentMeet(meet.id);
+  renderPreview();
+}
+function verdictFor(parsedSwimmer, meet) {
+  const evKey = lastParsed.event && lastParsed.event.key;
+  if (!evKey || !eventDef(evKey)) return { kind: 'unsupported' };
+  const totalC = parseTime(parsedSwimmer.time);
+  const bestC = currentBestTotalC(DATA, parsedSwimmer.swimmerId, meet.course, evKey);
+  if (bestC == null) return { kind: 'first', totalC };
+  if (totalC < bestC) return { kind: 'update', totalC, diff: bestC - totalC };
+  if (totalC === bestC) return { kind: 'tie', totalC };
+  return { kind: 'slower', totalC, diff: totalC - bestC };
+}
+function renderPreview() {
+  const area = document.getElementById('previewArea');
+  const p = lastParsed;
+  if (!p) { area.innerHTML = ''; return; }
+  const meet = currentMeet();
+  let html = '';
+  html += '<div class="card"><h2>読み取り結果</h2>';
+  html += `<div class="meetline">${esc(p.meet || '大会名不明')}</div>`;
+  if (p.event) {
+    html += `<div class="evtitle">${esc(p.event.gender)} ${p.event.distance}m ${esc(p.event.style)}（${esc(p.event.cls)}）</div>`;
+    if (!p.event.key || !eventDef(p.event.key)) {
+      html += '<p class="hint" style="color:var(--danger)">この種目はツール未対応のため取り込めません（リレー・25m種目など）。</p>';
+    }
+  } else {
+    html += '<p class="hint" style="color:var(--danger)">種目見出しを読み取れませんでした。ランキング画面の見出しを含めてコピーしてください。</p>';
+  }
+  if (!meet) {
+    html += '<p class="hint">取り込み先の大会が選ばれていません。</p>';
+    if (p.meet) html += `<button class="btn" onclick="createMeetFromParsed()">「${esc(p.meet)}」を作成して選ぶ</button>`;
+  } else {
+    html += `<p class="hint">取り込み先：${esc(meet.name)}（${courseLabel(meet.course)}）</p>`;
+  }
+  html += '</div>';
+
+  p.swimmers.forEach((s, i) => {
+    const sw = DATA.swimmers.find(x => normalizeName(x.name) === s.nameNorm);
+    s.swimmerId = sw ? sw.id : null;
+    const lapsText = s.laps.length
+      ? s.laps.map(l => `${l.dist}m ${l.cum}`).join(' → ')
+      : 'ラップなし（未展開）';
+    html += `<div class="card pcard ${sw ? '' : 'unmatched'}">`;
+    if (!sw) html += '<span class="badge grey">未登録</span>';
+    else if (meet && p.event && eventDef(p.event.key || '')) {
+      const v = verdictFor(s, meet);
+      if (v.kind === 'update') html += '<span class="badge">自己Best更新</span>';
+      else if (v.kind === 'first') html += '<span class="badge teal">初記録</span>';
+    }
+    html += `<div class="name">${esc(sw ? sw.name : s.name.replace(/[\s　]+/g, ' '))}</div>`;
+    html += `<div class="meta">${esc(s.team)}（${esc(s.grade)}）／ ${s.heat}組 ${s.lane}レーン ／ ${esc(s.klass)}${s.rt ? ' ／ RT ' + esc(s.rt) : ''}</div>`;
+    html += `<div class="time">${esc(s.time)}</div>`;
+    if (meet && sw && p.event && eventDef(p.event.key || '')) {
+      const v = verdictFor(s, meet);
+      if (v.kind === 'update') html += `<div class="diff plus">自己ベスト ${esc(formatTime(currentBestTotalC(DATA, sw.id, meet.course, p.event.key)))} → ${esc(formatTime(v.diff))}秒更新</div>`;
+      else if (v.kind === 'slower') html += `<div class="diff minus">自己ベストまで あと${esc(formatTime(v.diff))}秒</div>`;
+      else if (v.kind === 'tie') html += '<div class="diff">自己ベストと同タイム</div>';
+      else if (v.kind === 'first') html += '<div class="diff plus">自己ベスト未登録（初記録）</div>';
+    } else if (sw) {
+      html += `<div class="meta">サイト上のベスト [${esc(s.siteBest)}]</div>`;
+    }
+    html += `<div class="laps">${esc(lapsText)}</div>`;
+    if (sw && meet && p.event && eventDef(p.event.key || '')) {
+      const entry = meet.entries.find(e => e.swimmerId === sw.id && e.eventKey === p.event.key);
+      if (entry && entry.result) {
+        if (entry.result.appliedToBest) html += '<p class="hint" style="color:var(--ok)">取り込み済み・ベスト反映済み</p>';
+        else if (entry.result.beatBest) html += `<button class="btn gold" onclick="reflectEntry('${entry.id}')">自己ベストに反映する</button>`;
+        else html += '<p class="hint">取り込み済み</p>';
+      } else if (!importedOnce) {
+        html += `<label class="checkline"><input type="checkbox" class="importCheck" data-idx="${i}" checked> この結果を取り込む</label>`;
+      }
+    }
+    html += '</div>';
+  });
+
+  if (meet && !importedOnce && p.event && eventDef(p.event.key || '')) {
+    html += '<button class="btn" onclick="doImport()">チェックした結果を取り込む</button>';
+  }
+  if (meet && importedOnce) {
+    const pending = meet.entries.filter(e => e.result && !e.result.appliedToBest && e.result.beatBest);
+    if (pending.length) html += `<button class="btn gold" onclick="reflectAll()">ベスト更新分をすべて反映（${pending.length}件）</button>`;
+  }
+  area.innerHTML = html;
+}
+function doImport() {
+  const meet = currentMeet();
+  const p = lastParsed;
+  if (!meet || !p || !p.event) return;
+  const evKey = p.event.key;
+  let count = 0;
+  document.querySelectorAll('.importCheck:checked').forEach(chk => {
+    const s = p.swimmers[+chk.dataset.idx];
+    if (!s || !s.swimmerId) return;
+    let entry = meet.entries.find(e => e.swimmerId === s.swimmerId && e.eventKey === evKey);
+    const noteParts = [s.klass];
+    if (s.rt) noteParts.push('RT ' + s.rt);
+    if (!entry) {
+      entry = { id: uid(), swimmerId: s.swimmerId, eventKey: evKey, division: p.event.cls, heat: s.heat, lane: s.lane, note: noteParts.join(' / ') };
+      meet.entries.push(entry);
+    } else {
+      entry.division = p.event.cls; entry.heat = s.heat; entry.lane = s.lane; entry.note = noteParts.join(' / ');
+    }
+    const totalC = parseTime(s.time);
+    const bestC = currentBestTotalC(DATA, s.swimmerId, meet.course, evKey);
+    entry.result = { laps: resultLapsForEntry(s, evKey), appliedToBest: false,
+      beatBest: (bestC == null || (totalC != null && totalC < bestC)) };
+    count++;
+  });
+  importedOnce = true;
+  saveData();
+  renderAll();
+  renderPreview();
+  showMsg('importMsg', count > 0 ? `${count}件を取り込みました` : '取り込む対象が選択されていません', count > 0);
+}
+function reflectEntry(entryId) {
+  const meet = currentMeet();
+  if (!meet) return;
+  const entry = meet.entries.find(e => e.id === entryId);
+  if (entry && applyResultToBest(DATA, entry, meet)) {
+    saveData();
+    renderAll();
+    renderPreview();
+    showMsg('importMsg', '自己ベストに反映しました', true);
+  }
+}
+function reflectAll() {
+  const meet = currentMeet();
+  if (!meet) return;
+  let n = 0;
+  meet.entries.forEach(e => {
+    if (e.result && !e.result.appliedToBest && e.result.beatBest && applyResultToBest(DATA, e, meet)) n++;
+  });
+  saveData();
+  renderAll();
+  renderPreview();
+  showMsg('importMsg', n > 0 ? `${n}件を自己ベストに反映しました` : '反映できる更新はありませんでした', n > 0);
+}
+function renderAll() { renderMeetSelect(); renderSwimmers(); }
+renderAll();
+</script>
+</body>
+</html>
